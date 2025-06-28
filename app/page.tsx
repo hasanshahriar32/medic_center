@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { onAuthStateChanged, signOut } from "firebase/auth"
-import { auth } from "@/lib/firebase-client"
+import { onAuthStateChangedClient, signOutClient } from "@/lib/firebase-auth"
 import { ChevronRight, Activity, Heart, Brain, AlertTriangle, Bell, RefreshCw, Zap, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRealTimeData } from "@/hooks/useRealTimeData"
@@ -21,7 +20,7 @@ export default function MedicalDashboard() {
   const { realTimeData, connectionStatus, refreshData } = useRealTimeData()
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribePromise = onAuthStateChangedClient((user) => {
       if (user) {
         setUser(user)
       } else {
@@ -31,12 +30,14 @@ export default function MedicalDashboard() {
       setLoading(false)
     })
 
-    return () => unsubscribe()
+    return () => {
+      unsubscribePromise.then((unsub) => unsub())
+    }
   }, [])
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth)
+      await signOutClient()
       window.location.href = "/auth/login"
     } catch (error) {
       console.error("Error signing out:", error)

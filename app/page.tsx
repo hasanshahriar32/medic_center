@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { onAuthStateChanged, signOut } from "firebase/auth"
-import { auth } from "@/lib/firebase"
+import { auth } from "@/lib/firebase-client"
 import { ChevronRight, Activity, Heart, Brain, AlertTriangle, Bell, RefreshCw, Zap, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRealTimeData } from "@/hooks/useRealTimeData"

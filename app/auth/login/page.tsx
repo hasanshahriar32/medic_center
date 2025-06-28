@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth"
-import { auth } from "@/lib/firebase"
+import { auth } from "@/lib/firebase-client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

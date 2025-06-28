@@ -1,7 +1,9 @@
 "use client"
 
-import type * as React from "react"
-import { AlertTriangle, Bell, Brain, CheckCircle, Clock, Heart, User, X } from "lucide-react"
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { AlertTriangle, Bell, Brain, CheckCircle, Clock, Heart, User } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -18,7 +20,6 @@ interface AlertsPageProps {
   realTimeData?: RealTimeData
 }
 
-/* ---------- SAFE DEFAULTS FOR PRERENDER ---------- */
 const defaultRealTimeData: RealTimeData = {
   heartRate: 0,
   eegAlpha: 0,
@@ -27,13 +28,45 @@ const defaultRealTimeData: RealTimeData = {
   lastUpdate: new Date(),
 }
 
-/* ---------- PAGE COMPONENT ---------- */
 export default function AlertsPage({ realTimeData = defaultRealTimeData }: AlertsPageProps) {
-  /* ---- Helper functions ---- */
+  const [alerts, setAlerts] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchAlerts()
+  }, [])
+
+  const fetchAlerts = async () => {
+    try {
+      const response = await fetch("/api/alerts")
+      const alertsData = await response.json()
+      setAlerts(alertsData)
+    } catch (error) {
+      console.error("Error fetching alerts:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const updateAlertStatus = async (alertId: string, status: string) => {
+    try {
+      await fetch("/api/alerts", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ alert_id: alertId, status }),
+      })
+      fetchAlerts() // Refresh alerts
+    } catch (error) {
+      console.error("Error updating alert:", error)
+    }
+  }
+
   const getAlertColor = (type: string, priority: string) => {
-    if (type === "Critical" || priority === "high") {
+    if (type === "critical" || priority === "high") {
       return "bg-red-50 border-red-200 text-red-800"
-    } else if (type === "Warning" || priority === "medium") {
+    } else if (type === "warning" || priority === "medium") {
       return "bg-orange-50 border-orange-200 text-orange-800"
     }
     return "bg-blue-50 border-blue-200 text-blue-800"
@@ -54,64 +87,22 @@ export default function AlertsPage({ realTimeData = defaultRealTimeData }: Alert
 
   const getAlertIcon = (type: string) => {
     switch (type) {
-      case "Critical":
+      case "critical":
         return <AlertTriangle className="w-5 h-5 text-red-500" />
-      case "Warning":
+      case "warning":
         return <Bell className="w-5 h-5 text-orange-500" />
       default:
         return <Bell className="w-5 h-5 text-blue-500" />
     }
   }
 
-  /* ---- Static demo alerts (replace with live data later) ---- */
-  const alerts = [
-    {
-      id: "ALT-001",
-      type: "Critical",
-      title: "High Anxiety Level Detected",
-      patient: "Sarah Johnson",
-      time: "2 minutes ago",
-      description: "Patient showing elevated heart rate (95 BPM) and reduced alpha wave activity",
-      status: "active",
-      priority: "high",
-      source: "ML Prediction Model",
-    },
-    {
-      id: "ALT-002",
-      type: "Warning",
-      title: "EEG Pattern Anomaly",
-      patient: "Michael Chen",
-      time: "5 minutes ago",
-      description: "Unusual beta-wave patterns detected, possible stress indicator",
-      status: "acknowledged",
-      priority: "medium",
-      source: "EEG Monitor",
-    },
-    {
-      id: "ALT-003",
-      type: "Info",
-      title: "Medication Reminder",
-      patient: "Emma Davis",
-      time: "10 minutes ago",
-      description: "Scheduled anxiety medication due in 30 minutes",
-      status: "resolved",
-      priority: "low",
-      source: "Treatment Schedule",
-    },
-    {
-      id: "ALT-004",
-      type: "Critical",
-      title: "Panic Attack Prediction",
-      patient: "Sarah Johnson",
-      time: "15 minutes ago",
-      description: "85 % probability of panic attack in next 30 minutes based on current vitals",
-      status: "active",
-      priority: "high",
-      source: "LSTM Neural Network",
-    },
-  ]
+  const alertCounts = {
+    critical: alerts.filter((alert) => alert.type === "critical" && alert.status === "active").length,
+    warning: alerts.filter((alert) => alert.type === "warning" && alert.status === "active").length,
+    info: alerts.filter((alert) => alert.type === "info" && alert.status === "active").length,
+    resolved: alerts.filter((alert) => alert.status === "resolved").length,
+  }
 
-  /* ---------- JSX ---------- */
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -128,10 +119,10 @@ export default function AlertsPage({ realTimeData = defaultRealTimeData }: Alert
 
       {/* Alert Counters */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <CounterCard label="CRITICAL ALERTS" value={2} color="red" />
-        <CounterCard label="WARNINGS" value={1} color="orange" />
-        <CounterCard label="INFO ALERTS" value={1} color="blue" />
-        <CounterCard label="RESOLVED" value={1} color="green" />
+        <CounterCard label="CRITICAL ALERTS" value={alertCounts.critical} color="red" />
+        <CounterCard label="WARNINGS" value={alertCounts.warning} color="orange" />
+        <CounterCard label="INFO ALERTS" value={alertCounts.info} color="blue" />
+        <CounterCard label="RESOLVED" value={alertCounts.resolved} color="green" />
       </div>
 
       {/* Active Alerts List */}
@@ -143,59 +134,75 @@ export default function AlertsPage({ realTimeData = defaultRealTimeData }: Alert
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {alerts.map((alert) => (
-              <div key={alert.id} className={`border rounded-lg p-4 ${getAlertColor(alert.type, alert.priority)}`}>
-                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-                  {/* LEFT */}
-                  <div className="flex items-start gap-4">
-                    <div className="mt-1">{getAlertIcon(alert.type)}</div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-gray-800">{alert.title}</h3>
-                        <Badge className={getStatusColor(alert.status)}>{alert.status}</Badge>
-                      </div>
-                      <p className="text-sm text-gray-700 mb-2">{alert.description}</p>
-                      <div className="flex items-center gap-4 text-xs text-gray-600">
-                        <span className="flex items-center gap-1">
-                          <User className="w-3 h-3" />
-                          {alert.patient}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {alert.time}
-                        </span>
-                        <span>Source:&nbsp;{alert.source}</span>
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-gray-500 mt-2">Loading alerts...</p>
+            </div>
+          ) : alerts.length === 0 ? (
+            <div className="text-center py-8">
+              <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+              <p className="text-gray-500">No active alerts</p>
+              <p className="text-sm text-gray-400">All systems are operating normally</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {alerts.map((alert) => (
+                <div key={alert.id} className={`border rounded-lg p-4 ${getAlertColor(alert.type, alert.type)}`}>
+                  <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="mt-1">{getAlertIcon(alert.type)}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-gray-800">{alert.title}</h3>
+                          <Badge className={getStatusColor(alert.status)}>{alert.status}</Badge>
+                        </div>
+                        <p className="text-sm text-gray-700 mb-2">{alert.description}</p>
+                        <div className="flex items-center gap-4 text-xs text-gray-600">
+                          <span className="flex items-center gap-1">
+                            <User className="w-3 h-3" />
+                            {alert.user_name || "Unknown User"}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {new Date(alert.created_at).toLocaleString()}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* RIGHT / ACTIONS */}
-                  <div className="flex gap-2">
-                    {alert.status === "active" && (
-                      <>
-                        <Button size="sm" variant="outline" className="text-xs bg-transparent">
-                          Acknowledge
+                    <div className="flex gap-2">
+                      {alert.status === "active" && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs bg-transparent"
+                            onClick={() => updateAlertStatus(alert.id, "acknowledged")}
+                          >
+                            Acknowledge
+                          </Button>
+                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs">
+                            View Patient
+                          </Button>
+                        </>
+                      )}
+                      {alert.status === "acknowledged" && (
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                          onClick={() => updateAlertStatus(alert.id, "resolved")}
+                        >
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Resolve
                         </Button>
-                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs">
-                          View Patient
-                        </Button>
-                      </>
-                    )}
-                    {alert.status === "acknowledged" && (
-                      <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white text-xs">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Resolve
-                      </Button>
-                    )}
-                    <Button size="sm" variant="ghost" className="text-gray-500 hover:text-red-600">
-                      <X className="w-3 h-3" />
-                    </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -218,7 +225,6 @@ export default function AlertsPage({ realTimeData = defaultRealTimeData }: Alert
   )
 }
 
-/* ---------- Small sub-components ---------- */
 function CounterCard({
   label,
   value,

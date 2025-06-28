@@ -4,7 +4,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Heart, Brain, Activity, Thermometer, Droplets, Wind } from "lucide-react"
 
-export default function VitalSignsPage({ realTimeData }) {
+const defaultRealTimeData = {
+  heartRate: 0,
+  eegAlpha: 0,
+  ecgSignal: 0,
+  anxietyLevel: "Low",
+  lastUpdate: new Date(),
+}
+
+export default function VitalSignsPage({
+  realTimeData = defaultRealTimeData,
+}: {
+  realTimeData?: {
+    heartRate: number
+    eegAlpha: number
+    ecgSignal: number
+    anxietyLevel: string
+    lastUpdate: Date
+  }
+}) {
   const vitalSigns = [
     {
       name: "Heart Rate",

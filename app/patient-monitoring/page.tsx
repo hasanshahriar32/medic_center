@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -24,41 +25,40 @@ export default function PatientMonitoringPage({
     lastUpdate: Date
   }
 }) {
-  const patients = [
-    {
-      id: "P-001",
-      name: "Sarah Johnson",
-      age: 28,
-      condition: "Anxiety Disorder",
-      status: "monitoring",
-      heartRate: realTimeData.heartRate,
-      eegActivity: realTimeData.eegAlpha,
-      riskLevel: realTimeData.anxietyLevel,
-      lastUpdate: "2 min ago",
-    },
-    {
-      id: "P-002",
-      name: "Michael Chen",
-      age: 34,
-      condition: "Panic Disorder",
-      status: "stable",
-      heartRate: 68,
-      eegActivity: 9.2,
-      riskLevel: "Low",
-      lastUpdate: "5 min ago",
-    },
-    {
-      id: "P-003",
-      name: "Emma Davis",
-      age: 31,
-      condition: "GAD",
-      status: "alert",
-      heartRate: 95,
-      eegActivity: 6.8,
-      riskLevel: "High",
-      lastUpdate: "1 min ago",
-    },
-  ]
+  const [patients, setPatients] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchPatients()
+  }, [])
+
+  const fetchPatients = async () => {
+    try {
+      const response = await fetch("/api/users")
+      const users = await response.json()
+
+      // Transform users to patient format with real-time data
+      const patientsData = users.map((user: any) => ({
+        id: user.id,
+        firebase_uid: user.firebase_uid,
+        name: user.name,
+        age: user.age || "N/A",
+        condition: user.medical_condition || "General Monitoring",
+        status: "monitoring",
+        heartRate: realTimeData.heartRate || 0,
+        eegActivity: realTimeData.eegAlpha || 0,
+        riskLevel: realTimeData.anxietyLevel || "Low",
+        lastUpdate: realTimeData.lastUpdate ? new Date(realTimeData.lastUpdate).toLocaleString() : "No data",
+        email: user.email,
+      }))
+
+      setPatients(patientsData)
+    } catch (error) {
+      console.error("Error fetching patients:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const getRiskColor = (level) => {
     switch (level) {
@@ -191,54 +191,67 @@ export default function PatientMonitoringPage({
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
             <User className="w-5 h-5" />
-            Active Patients
+            Registered Patients ({patients.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {patients.map((patient) => (
-              <div
-                key={patient.id}
-                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
-              >
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center">
-                      <User className="w-6 h-6 text-blue-600" />
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-gray-500 mt-2">Loading patients...</p>
+            </div>
+          ) : patients.length === 0 ? (
+            <div className="text-center py-8">
+              <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No patients registered yet</p>
+              <p className="text-sm text-gray-400">Patients will appear here after they create accounts</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {patients.map((patient) => (
+                <div
+                  key={patient.id}
+                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center">
+                        <User className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-800">{patient.name}</h3>
+                        <p className="text-sm text-gray-600">
+                          {patient.email} • Age {patient.age}
+                        </p>
+                        <p className="text-sm text-gray-500">{patient.condition}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-800">{patient.name}</h3>
-                      <p className="text-sm text-gray-600">
-                        {patient.id} • Age {patient.age}
-                      </p>
-                      <p className="text-sm text-gray-500">{patient.condition}</p>
-                    </div>
-                  </div>
 
-                  <div className="flex flex-wrap gap-4 items-center">
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500">Heart Rate</p>
-                      <p className="text-lg font-bold text-red-600 font-mono">{patient.heartRate}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500">EEG Alpha</p>
-                      <p className="text-lg font-bold text-purple-600 font-mono">{patient.eegActivity}</p>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Badge className={getRiskColor(patient.riskLevel)}>{patient.riskLevel} Risk</Badge>
-                      <Badge className={getStatusColor(patient.status)}>{patient.status}</Badge>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <Clock className="w-3 h-3" />
-                        {patient.lastUpdate}
+                    <div className="flex flex-wrap gap-4 items-center">
+                      <div className="text-center">
+                        <p className="text-xs text-gray-500">Heart Rate</p>
+                        <p className="text-lg font-bold text-red-600 font-mono">{patient.heartRate}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-gray-500">EEG Alpha</p>
+                        <p className="text-lg font-bold text-purple-600 font-mono">{patient.eegActivity}</p>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Badge className={getRiskColor(patient.riskLevel)}>{patient.riskLevel} Risk</Badge>
+                        <Badge className={getStatusColor(patient.status)}>{patient.status}</Badge>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <Clock className="w-3 h-3" />
+                          {patient.lastUpdate}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

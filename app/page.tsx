@@ -1,8 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronRight, Activity, Heart, Brain, AlertTriangle, Bell, RefreshCw, Zap } from "lucide-react"
+import { onAuthStateChanged, signOut } from "firebase/auth"
+import { auth } from "@/lib/firebase"
+import { ChevronRight, Activity, Heart, Brain, AlertTriangle, Bell, RefreshCw, Zap, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useSocket } from "@/hooks/useSocket"
 import PatientMonitoringPage from "./patient-monitoring/page"
 import VitalSignsPage from "./vital-signs/page"
 import PredictiveAnalyticsPage from "./predictive-analytics/page"
@@ -12,29 +15,44 @@ import SystemStatusPage from "./system-status/page"
 export default function MedicalDashboard() {
   const [activeSection, setActiveSection] = useState("monitoring")
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [connectionStatus, setConnectionStatus] = useState("connected")
-  const [realTimeData, setRealTimeData] = useState({
-    heartRate: 72,
-    eegAlpha: 8.5,
-    ecgSignal: 85,
-    anxietyLevel: "Low",
-    lastUpdate: new Date(),
-  })
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
-  // Simulate real-time data updates (replace with actual Socket.IO connection)
+  const { realTimeData, connectionStatus } = useSocket()
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      setRealTimeData((prev) => ({
-        heartRate: Math.floor(Math.random() * 40) + 60, // 60-100 BPM
-        eegAlpha: Math.random() * 5 + 6, // 6-11 Hz
-        ecgSignal: Math.floor(Math.random() * 30) + 70, // 70-100
-        anxietyLevel: Math.random() > 0.7 ? "High" : Math.random() > 0.4 ? "Medium" : "Low",
-        lastUpdate: new Date(),
-      }))
-    }, 2000)
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUser(user)
+      } else {
+        // Redirect to login if not authenticated
+        window.location.href = "/auth/login"
+      }
+      setLoading(false)
+    })
 
-    return () => clearInterval(interval)
+    return () => unsubscribe()
   }, [])
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth)
+      window.location.href = "/auth/login"
+    } catch (error) {
+      console.error("Error signing out:", error)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <Heart className="w-12 h-12 text-blue-600 animate-pulse mx-auto mb-4" />
+          <p className="text-gray-600">Loading MedWatch AI...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -48,6 +66,7 @@ export default function MedicalDashboard() {
               <h1 className="text-blue-600 font-bold text-lg tracking-wide">MedWatch AI</h1>
               <p className="text-gray-500 text-xs">Real-Time Medical Monitoring</p>
               <p className="text-gray-400 text-xs">v3.2.1 HIPAA Compliant</p>
+              {user && <p className="text-gray-600 text-xs mt-2">Welcome, {user.email}</p>}
             </div>
             <Button
               variant="ghost"
@@ -85,41 +104,48 @@ export default function MedicalDashboard() {
           </nav>
 
           {!sidebarCollapsed && (
-            <div className="mt-8 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center gap-2 mb-3">
-                <div
-                  className={`w-2 h-2 rounded-full animate-pulse ${connectionStatus === "connected" ? "bg-green-500" : "bg-red-500"}`}
-                ></div>
-                <span className="text-xs text-gray-700 font-medium">SYSTEM STATUS</span>
+            <>
+              <div className="mt-8 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                  <div
+                    className={`w-2 h-2 rounded-full animate-pulse ${connectionStatus === "connected" ? "bg-green-500" : "bg-red-500"}`}
+                  ></div>
+                  <span className="text-xs text-gray-700 font-medium">SYSTEM STATUS</span>
+                </div>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Heart Rate:</span>
+                    <span className="font-mono text-red-600">{realTimeData.heartRate} BPM</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>EEG Alpha:</span>
+                    <span className="font-mono text-purple-600">{realTimeData.eegAlpha.toFixed(1)} Hz</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Anxiety Level:</span>
+                    <span
+                      className={`font-mono ${
+                        realTimeData.anxietyLevel === "High"
+                          ? "text-red-600"
+                          : realTimeData.anxietyLevel === "Medium"
+                            ? "text-orange-500"
+                            : "text-green-600"
+                      }`}
+                    >
+                      {realTimeData.anxietyLevel}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-2">
+                    Last Update: {realTimeData.lastUpdate.toLocaleTimeString()}
+                  </div>
+                </div>
               </div>
-              <div className="text-xs text-gray-600 space-y-1">
-                <div className="flex justify-between">
-                  <span>Heart Rate:</span>
-                  <span className="font-mono text-red-600">{realTimeData.heartRate} BPM</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>EEG Alpha:</span>
-                  <span className="font-mono text-purple-600">{realTimeData.eegAlpha.toFixed(1)} Hz</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Anxiety Level:</span>
-                  <span
-                    className={`font-mono ${
-                      realTimeData.anxietyLevel === "High"
-                        ? "text-red-600"
-                        : realTimeData.anxietyLevel === "Medium"
-                          ? "text-orange-500"
-                          : "text-green-600"
-                    }`}
-                  >
-                    {realTimeData.anxietyLevel}
-                  </span>
-                </div>
-                <div className="text-xs text-gray-500 mt-2">
-                  Last Update: {realTimeData.lastUpdate.toLocaleTimeString()}
-                </div>
-              </div>
-            </div>
+
+              <Button onClick={handleSignOut} variant="ghost" className="w-full mt-4 text-gray-600 hover:text-red-600">
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
+              </Button>
+            </>
           )}
         </div>
       </div>

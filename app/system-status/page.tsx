@@ -3,140 +3,103 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Button } from "@/components/ui/button"
-import { Server, Database, Wifi, Activity, CheckCircle, AlertTriangle, Settings, Heart, Brain, Zap } from "lucide-react"
+import { Server, Database, Wifi, Shield, Zap, AlertTriangle, CheckCircle } from "lucide-react"
 
-export default function SystemStatusPage({ realTimeData }) {
-  const systems = [
+const defaultRealTimeData = {
+  heartRate: 0,
+  eegAlpha: 0,
+  ecgSignal: 0,
+  anxietyLevel: "Low",
+  lastUpdate: new Date(),
+}
+
+export default function SystemStatusPage({
+  realTimeData = defaultRealTimeData,
+}: {
+  realTimeData?: {
+    heartRate: number
+    eegAlpha: number
+    ecgSignal: number
+    anxietyLevel: string
+    lastUpdate: Date
+  }
+}) {
+  const systemComponents = [
     {
-      id: "SYS-001",
-      name: "EEG Data Acquisition",
-      type: "Sensor Array",
+      name: "Database Server",
       status: "online",
-      health: 98,
-      dataRate: "256 Hz",
-      channels: 32,
-      uptime: "247 days",
-      location: "Patient Room A",
-      lastMaintenance: "2025-05-15",
+      uptime: "99.9%",
+      lastCheck: "2 min ago",
+      icon: Database,
+      color: "green",
+      details: "Neon PostgreSQL - All queries responding normally",
     },
     {
-      id: "SYS-002",
-      name: "ECG Monitoring System",
-      type: "Cardiac Monitor",
+      name: "MQTT Broker",
       status: "online",
-      health: 95,
-      dataRate: "1000 Hz",
-      channels: 12,
-      uptime: "189 days",
-      location: "Patient Room A",
-      lastMaintenance: "2025-06-01",
+      uptime: "99.7%",
+      lastCheck: "1 min ago",
+      icon: Wifi,
+      color: "green",
+      details: "HiveMQ Cloud - Processing real-time sensor data",
     },
     {
-      id: "SYS-003",
+      name: "Firebase Auth",
+      status: "online",
+      uptime: "100%",
+      lastCheck: "30 sec ago",
+      icon: Shield,
+      color: "green",
+      details: "Authentication services operational",
+    },
+    {
       name: "ML Prediction Engine",
-      type: "AI Processing",
-      status: "online",
-      health: 92,
-      dataRate: "Real-time",
-      channels: "N/A",
-      uptime: "156 days",
-      location: "Cloud Server",
-      lastMaintenance: "2025-04-20",
-    },
-    {
-      id: "SYS-004",
-      name: "Data Storage Cluster",
-      type: "Database",
-      status: "online",
-      health: 89,
-      dataRate: "10 GB/day",
-      channels: "N/A",
-      uptime: "203 days",
-      location: "Data Center",
-      lastMaintenance: "2025-05-28",
-    },
-    {
-      id: "SYS-005",
-      name: "Alert Notification System",
-      type: "Communication",
       status: "warning",
-      health: 76,
-      dataRate: "Event-based",
-      channels: "N/A",
-      uptime: "134 days",
-      location: "Cloud Server",
-      lastMaintenance: "2025-06-10",
+      uptime: "98.2%",
+      lastCheck: "5 min ago",
+      icon: Zap,
+      color: "orange",
+      details: "High CPU usage detected - scaling in progress",
     },
     {
-      id: "SYS-006",
-      name: "Network Infrastructure",
-      type: "Connectivity",
+      name: "Socket.IO Server",
       status: "online",
-      health: 94,
-      dataRate: "1 Gbps",
-      channels: "N/A",
-      uptime: "298 days",
-      location: "Network Core",
-      lastMaintenance: "2025-03-15",
+      uptime: "99.5%",
+      lastCheck: "1 min ago",
+      icon: Server,
+      color: "green",
+      details: "Real-time communication active",
     },
   ]
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case "online":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800 border-green-200"
       case "warning":
-        return "bg-orange-100 text-orange-800"
-      case "maintenance":
-        return "bg-blue-100 text-blue-800"
+        return "bg-orange-100 text-orange-800 border-orange-200"
       case "offline":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800 border-red-200"
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800 border-gray-200"
     }
   }
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case "online":
-        return <CheckCircle className="w-4 h-4 text-green-500" />
+        return <CheckCircle className="w-4 h-4 text-green-600" />
       case "warning":
-        return <AlertTriangle className="w-4 h-4 text-orange-500" />
-      case "maintenance":
-        return <Settings className="w-4 h-4 text-blue-500" />
+        return <AlertTriangle className="w-4 h-4 text-orange-600" />
       case "offline":
-        return <AlertTriangle className="w-4 h-4 text-red-500" />
+        return <AlertTriangle className="w-4 h-4 text-red-600" />
       default:
-        return <Activity className="w-4 h-4 text-gray-500" />
+        return <CheckCircle className="w-4 h-4 text-gray-600" />
     }
   }
 
-  const getSystemIcon = (type) => {
-    switch (type) {
-      case "Sensor Array":
-        return <Brain className="w-6 h-6 text-purple-500" />
-      case "Cardiac Monitor":
-        return <Heart className="w-6 h-6 text-red-500" />
-      case "AI Processing":
-        return <Zap className="w-6 h-6 text-blue-500" />
-      case "Database":
-        return <Database className="w-6 h-6 text-green-500" />
-      case "Communication":
-        return <Activity className="w-6 h-6 text-orange-500" />
-      case "Connectivity":
-        return <Wifi className="w-6 h-6 text-cyan-500" />
-      default:
-        return <Server className="w-6 h-6 text-gray-500" />
-    }
-  }
-
-  const getHealthColor = (health) => {
-    if (health >= 95) return "text-green-600"
-    if (health >= 85) return "text-green-600"
-    if (health >= 70) return "text-orange-500"
-    return "text-red-500"
-  }
+  const overallHealth =
+    (systemComponents.filter((comp) => comp.status === "online").length / systemComponents.length) * 100
 
   return (
     <div className="p-6 space-y-6">
@@ -144,181 +107,174 @@ export default function SystemStatusPage({ realTimeData }) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">System Status</h1>
-          <p className="text-sm text-gray-600">Medical monitoring infrastructure health and performance</p>
-        </div>
-        <div className="flex gap-2">
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-            <Settings className="w-4 h-4 mr-2" />
-            System Settings
-          </Button>
+          <p className="text-sm text-gray-600">Infrastructure monitoring and health checks</p>
         </div>
       </div>
 
-      {/* System Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-green-600 font-medium tracking-wider">SYSTEMS ONLINE</p>
-                <p className="text-2xl font-bold text-green-700 font-mono">5/6</p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-orange-600 font-medium tracking-wider">WARNINGS</p>
-                <p className="text-2xl font-bold text-orange-700 font-mono">1</p>
-              </div>
-              <AlertTriangle className="w-8 h-8 text-orange-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-blue-600 font-medium tracking-wider">AVG UPTIME</p>
-                <p className="text-2xl font-bold text-blue-700 font-mono">99.8%</p>
-              </div>
-              <Activity className="w-8 h-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-purple-600 font-medium tracking-wider">DATA QUALITY</p>
-                <p className="text-2xl font-bold text-purple-700 font-mono">94%</p>
-              </div>
-              <Database className="w-8 h-8 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Systems Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {systems.map((system) => (
-          <Card key={system.id} className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  {getSystemIcon(system.type)}
-                  <div>
-                    <CardTitle className="text-sm font-bold text-gray-800">{system.name}</CardTitle>
-                    <p className="text-xs text-gray-500">{system.type}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {getStatusIcon(system.status)}
-                  <Badge className={getStatusColor(system.status)}>{system.status.toUpperCase()}</Badge>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">SYSTEM HEALTH</span>
-                <span className={`text-sm font-bold font-mono ${getHealthColor(system.health)}`}>{system.health}%</span>
-              </div>
-              <Progress value={system.health} className="h-2" />
-
-              <div className="grid grid-cols-2 gap-4 text-xs">
-                <div>
-                  <div className="text-gray-500 mb-1">Data Rate</div>
-                  <div className="text-gray-800 font-mono">{system.dataRate}</div>
-                </div>
-                <div>
-                  <div className="text-gray-500 mb-1">Channels</div>
-                  <div className="text-gray-800 font-mono">{system.channels}</div>
-                </div>
-              </div>
-
-              <div className="space-y-1 text-xs text-gray-500">
-                <div className="flex justify-between">
-                  <span>Uptime:</span>
-                  <span className="text-gray-800 font-mono">{system.uptime}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Location:</span>
-                  <span className="text-gray-800">{system.location}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Last Maintenance:</span>
-                  <span className="text-gray-800 font-mono">{system.lastMaintenance}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Real-time Data Flow */}
-      <Card className="bg-white border-gray-200 shadow-sm">
+      {/* Overall System Health */}
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-blue-500" />
-            Real-time Data Flow
+            <Server className="w-5 h-5 text-blue-600" />
+            Overall System Health
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
-              <Brain className="w-8 h-8 text-purple-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-gray-800">EEG Data</h3>
-              <p className="text-2xl font-bold text-purple-600 font-mono">{realTimeData.eegAlpha.toFixed(1)} Hz</p>
-              <p className="text-xs text-gray-600">32 channels @ 256 Hz</p>
+            <div className="text-center">
+              <div className="text-4xl font-bold font-mono text-blue-600 mb-2">{overallHealth.toFixed(1)}%</div>
+              <p className="text-sm text-gray-600">System Availability</p>
             </div>
-            <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
-              <Heart className="w-8 h-8 text-red-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-gray-800">ECG Data</h3>
-              <p className="text-2xl font-bold text-red-600 font-mono">{realTimeData.heartRate} BPM</p>
-              <p className="text-xs text-gray-600">12 leads @ 1000 Hz</p>
+            <div className="text-center">
+              <div className="text-4xl font-bold font-mono text-green-600 mb-2">
+                {systemComponents.filter((comp) => comp.status === "online").length}
+              </div>
+              <p className="text-sm text-gray-600">Services Online</p>
             </div>
-            <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <Zap className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-gray-800">ML Processing</h3>
-              <p className="text-2xl font-bold text-blue-600 font-mono">{realTimeData.anxietyLevel}</p>
-              <p className="text-xs text-gray-600">Real-time prediction</p>
+            <div className="text-center">
+              <div className="text-4xl font-bold font-mono text-purple-600 mb-2">
+                {realTimeData.lastUpdate ? Math.floor((Date.now() - realTimeData.lastUpdate.getTime()) / 1000) : 0}s
+              </div>
+              <p className="text-sm text-gray-600">Last Data Update</p>
             </div>
+          </div>
+          <div className="mt-4">
+            <Progress value={overallHealth} className="h-3" />
           </div>
         </CardContent>
       </Card>
 
-      {/* Network Performance */}
+      {/* System Components */}
       <Card className="bg-white border-gray-200 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-            <Wifi className="w-5 h-5 text-cyan-500" />
-            Network Performance
-          </CardTitle>
+          <CardTitle className="text-lg font-semibold text-gray-800">System Components</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Latency</p>
-              <p className="text-2xl font-bold text-cyan-600 font-mono">2.3ms</p>
+          <div className="space-y-4">
+            {systemComponents.map((component, index) => (
+              <div key={index} className="border border-gray-200 rounded-lg p-4">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center">
+                      <component.icon className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-gray-800">{component.name}</h3>
+                        {getStatusIcon(component.status)}
+                      </div>
+                      <p className="text-sm text-gray-600">{component.details}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-4 items-center">
+                    <Badge className={getStatusColor(component.status)}>{component.status.toUpperCase()}</Badge>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-600">Uptime</p>
+                      <p className="text-xs text-gray-500">{component.uptime}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-600">Last Check</p>
+                      <p className="text-xs text-gray-500">{component.lastCheck}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Real-time Metrics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-white border-gray-200 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-800">Data Flow Metrics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">MQTT Messages/min</span>
+                <span className="font-mono text-lg text-blue-600">247</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Database Queries/sec</span>
+                <span className="font-mono text-lg text-green-600">12.3</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Active Connections</span>
+                <span className="font-mono text-lg text-purple-600">156</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">ML Predictions/hour</span>
+                <span className="font-mono text-lg text-orange-600">1,247</span>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Throughput</p>
-              <p className="text-2xl font-bold text-cyan-600 font-mono">850 Mbps</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-gray-200 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-800">Resource Usage</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[
+                { label: "CPU Usage", value: 45, color: "bg-blue-500" },
+                { label: "Memory Usage", value: 67, color: "bg-green-500" },
+                { label: "Database Storage", value: 23, color: "bg-purple-500" },
+                { label: "Network I/O", value: 78, color: "bg-orange-500" },
+              ].map((metric, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">{metric.label}</span>
+                    <span className="font-mono text-gray-600">{metric.value}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${metric.color} transition-all duration-300`}
+                      style={{ width: `${metric.value}%` }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Packet Loss</p>
-              <p className="text-2xl font-bold text-cyan-600 font-mono">0.01%</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Uptime</p>
-              <p className="text-2xl font-bold text-cyan-600 font-mono">99.9%</p>
-            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Events */}
+      <Card className="bg-white border-gray-200 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold text-gray-800">Recent System Events</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {[
+              { time: "2 min ago", event: "Database backup completed successfully", type: "info" },
+              { time: "15 min ago", event: "ML model retrained with new data", type: "success" },
+              { time: "1 hour ago", event: "High CPU usage detected on prediction server", type: "warning" },
+              { time: "3 hours ago", event: "System maintenance completed", type: "info" },
+              { time: "6 hours ago", event: "New user registration: john.doe@example.com", type: "info" },
+            ].map((event, index) => (
+              <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                <div
+                  className={`w-2 h-2 rounded-full mt-2 ${
+                    event.type === "success"
+                      ? "bg-green-500"
+                      : event.type === "warning"
+                        ? "bg-orange-500"
+                        : event.type === "error"
+                          ? "bg-red-500"
+                          : "bg-blue-500"
+                  }`}
+                ></div>
+                <div className="flex-1">
+                  <p className="text-sm text-gray-800">{event.event}</p>
+                  <p className="text-xs text-gray-500">{event.time}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

@@ -5,18 +5,30 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Brain, AlertTriangle, Target, Zap, BarChart3 } from "lucide-react"
 
-export default function PredictiveAnalyticsPage({ realTimeData }) {
+type RealTimeData = {
+  anxietyLevel?: "High" | "Medium" | "Low"
+}
+
+const DEFAULT_REALTIME_DATA: RealTimeData = { anxietyLevel: "Low" }
+
+export default function PredictiveAnalyticsPage({
+  realTimeData,
+}: {
+  realTimeData?: RealTimeData
+} = {}) {
+  const data = realTimeData ?? DEFAULT_REALTIME_DATA
+
   const predictions = [
     {
       type: "Panic Attack",
-      probability: realTimeData.anxietyLevel === "High" ? 85 : realTimeData.anxietyLevel === "Medium" ? 45 : 15,
+      probability: data.anxietyLevel === "High" ? 85 : data.anxietyLevel === "Medium" ? 45 : 15,
       timeframe: "Next 30 minutes",
       confidence: 92,
       factors: ["Elevated HR", "EEG Patterns", "HRV Changes"],
     },
     {
       type: "Anxiety Episode",
-      probability: realTimeData.anxietyLevel === "High" ? 75 : realTimeData.anxietyLevel === "Medium" ? 55 : 25,
+      probability: data.anxietyLevel === "High" ? 75 : data.anxietyLevel === "Medium" ? 55 : 25,
       timeframe: "Next 2 hours",
       confidence: 88,
       factors: ["Alpha Wave Reduction", "Stress Markers", "Historical Pattern"],
@@ -86,9 +98,9 @@ export default function PredictiveAnalyticsPage({ realTimeData }) {
       {/* Current Risk Assessment */}
       <Card
         className={`border-2 ${
-          realTimeData.anxietyLevel === "High"
+          data.anxietyLevel === "High"
             ? "bg-red-50 border-red-300"
-            : realTimeData.anxietyLevel === "Medium"
+            : data.anxietyLevel === "Medium"
               ? "bg-orange-50 border-orange-300"
               : "bg-green-50 border-green-300"
         }`}
@@ -104,20 +116,20 @@ export default function PredictiveAnalyticsPage({ realTimeData }) {
             <div className="text-center">
               <div
                 className={`text-4xl font-bold font-mono mb-2 ${
-                  realTimeData.anxietyLevel === "High"
+                  data.anxietyLevel === "High"
                     ? "text-red-600"
-                    : realTimeData.anxietyLevel === "Medium"
+                    : data.anxietyLevel === "Medium"
                       ? "text-orange-600"
                       : "text-green-600"
                 }`}
               >
-                {realTimeData.anxietyLevel}
+                {data.anxietyLevel}
               </div>
               <p className="text-sm text-gray-600">Overall Risk Level</p>
             </div>
             <div className="text-center">
               <div className="text-4xl font-bold font-mono text-blue-600 mb-2">
-                {realTimeData.anxietyLevel === "High" ? "85%" : realTimeData.anxietyLevel === "Medium" ? "45%" : "15%"}
+                {data.anxietyLevel === "High" ? "85%" : data.anxietyLevel === "Medium" ? "45%" : "15%"}
               </div>
               <p className="text-sm text-gray-600">Panic Attack Probability</p>
             </div>

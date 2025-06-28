@@ -1,50 +1,87 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { usePWA } from "@/hooks/usePWA"
-import { Download, CheckCircle } from "lucide-react"
-import { useState } from "react"
+import { Badge } from "@/components/ui/badge"
+import { Download, Check, Smartphone } from "lucide-react"
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>
+}
 
 export function PWAInstallButtonHeader() {
-  const { canInstall, isInstalled, isStandalone, installApp } = usePWA()
-  const [installing, setInstalling] = useState(false)
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [isInstalled, setIsInstalled] = useState(false)
+  const [canInstall, setCanInstall] = useState(false)
 
-  // Show installed status if already installed
-  if (isInstalled || isStandalone) {
-    return (
-      <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700 cursor-default">
-        <CheckCircle className="w-4 h-4 mr-1" />
-        <span className="hidden md:inline">Installed</span>
-      </Button>
-    )
-  }
-
-  // Show install button if available
-  if (canInstall) {
-    const handleInstall = async () => {
-      setInstalling(true)
-      try {
-        await installApp()
-      } catch (error) {
-        console.error("Installation failed:", error)
-      } finally {
-        setInstalling(false)
-      }
+  useEffect(() => {
+    // Check if already installed
+    const checkInstalled = () => {
+      const isStandalone = window.matchMedia("(display-mode: standalone)").matches
+      const isInWebAppiOS = (window.navigator as any).standalone === true
+      const installed = isStandalone || isInWebAppiOS
+      setIsInstalled(installed)
+      return installed
     }
 
+    if (checkInstalled()) {
+      return
+    }
+
+    // Listen for beforeinstallprompt event
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault()
+      const promptEvent = e as BeforeInstallPromptEvent
+      setDeferredPrompt(promptEvent)
+      setCanInstall(true)
+    }
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+    }
+  }, [])
+
+  const handleInstall = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt()
+      const { outcome } = await deferredPrompt.userChoice
+
+      if (outcome === "accepted") {
+        setDeferredPrompt(null)
+        setCanInstall(false)
+        setIsInstalled(true)
+      }
+    }
+  }
+
+  if (isInstalled) {
     return (
-      <Button
-        onClick={handleInstall}
-        disabled={installing}
-        size="sm"
-        className="bg-blue-600 hover:bg-blue-700 text-white"
-      >
-        <Download className="w-4 h-4 mr-1" />
-        <span className="hidden md:inline">{installing ? "Installing..." : "Install"}</span>
-        <span className="md:hidden">{installing ? "..." : "Install"}</span>
+      <Badge variant="outline" className="border-green-500/50 text-green-400 px-3 py-1">
+        <Check className="h-3 w-3 mr-1" />
+        App Installed
+      </Badge>
+    )
+  }
+
+  if (canInstall) {
+    return (
+      <Button onClick={handleInstall} size="sm" className="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-1 h-8">
+        <Download className="h-3 w-3 mr-1" />
+        <span className="hidden sm:inline">Install App</span>
+        <span className="sm:hidden">Install</span>
       </Button>
     )
   }
 
-  return null
+  // Show manual install hint for browsers that don't support the prompt
+  return (
+    <Badge variant="outline" className="border-cyan-500/50 text-cyan-400 px-3 py-1">
+      <Smartphone className="h-3 w-3 mr-1" />
+      <span className="hidden sm:inline">Installable</span>
+      <span className="sm:hidden">PWA</span>
+    </Badge>
+  )
 }

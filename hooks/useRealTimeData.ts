@@ -1,108 +1,130 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 
-interface RealTimeData {
-  heartRate: number
-  eegAlpha: number
-  ecgSignal: number
-  anxietyLevel: "Low" | "Medium" | "High"
-  lastUpdate: Date
-  userId?: string
+interface User {
+  id: string
+  firebase_uid: string
+  email: string
+  name: string
+  created_at: string
 }
 
-interface UserData {
-  user: any
-  latestData: {
-    heartRate?: any
-    eeg?: any
-    ecg?: any
-  }
+interface SensorData {
+  id: string
+  user_id: string
+  data_type: string
+  value: number
+  signal_quality?: number
+  metadata?: any
+  created_at: string
+}
+
+interface UserWithData {
+  user: User
+  latestData: Record<string, SensorData>
 }
 
 export function useRealTimeData() {
-  const [realTimeData, setRealTimeData] = useState<RealTimeData>({
-    heartRate: 0,
-    eegAlpha: 0,
-    ecgSignal: 0,
-    anxietyLevel: "Low",
-    lastUpdate: new Date(),
-  })
-  const [allUsersData, setAllUsersData] = useState<UserData[]>([])
-  const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected">("disconnected")
+  const [data, setData] = useState<UserWithData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [connectionStatus, setConnectionStatus] = useState<"connecting" | "connected" | "disconnected">("connecting")
 
-  useEffect(() => {
-    // Initialize MQTT client on the server
-    initializeMQTT()
+  const fetchLatestData = useCallback(async () => {
+    try {
+      console.log("📡 Fetching latest data...")
+      const response = await fetch("/api/mqtt/latest")
 
-    // Poll for latest data every 2 seconds
-    const interval = setInterval(() => {
-      fetchLatestData()
-    }, 2000)
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
 
-    return () => clearInterval(interval)
+      const result = await response.json()
+      console.log("📊 Received data:", result)
+
+      if (Array.isArray(result)) {
+        setData(result)
+        setError(null)
+        setConnectionStatus("connected")
+      } else {
+        console.error("❌ Invalid data format:", result)
+        setError("Invalid data format received")
+      }
+    } catch (err) {
+      console.error("❌ Failed to fetch latest data:", err)
+      setError(err instanceof Error ? err.message : "Unknown error")
+      setConnectionStatus("disconnected")
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
-  const initializeMQTT = async () => {
+  const initializeMQTT = useCallback(async () => {
     try {
-      const response = await fetch("/api/mqtt/start", {
-        method: "POST",
-      })
+      console.log("🔌 Initializing MQTT client...")
+      const response = await fetch("/api/mqtt/start", { method: "POST" })
 
-      if (response.ok) {
-        setConnectionStatus("connected")
-        console.log("MQTT client initialized")
-      } else {
-        setConnectionStatus("disconnected")
-        console.error("Failed to initialize MQTT client")
+      if (!response.ok) {
+        throw new Error(`Failed to start MQTT: ${response.statusText}`)
       }
-    } catch (error) {
-      console.error("Error initializing MQTT:", error)
+
+      const result = await response.json()
+      console.log("✅ MQTT client initialized:", result)
+      setConnectionStatus("connected")
+    } catch (err) {
+      console.error("❌ Failed to initialize MQTT:", err)
       setConnectionStatus("disconnected")
     }
-  }
+  }, [])
 
-  const fetchLatestData = async () => {
-    try {
-      const response = await fetch("/api/mqtt/latest")
-      const data: UserData[] = await response.json()
+  useEffect(() => {
+    console.log("🚀 Initializing real-time data hook...")
 
-      setAllUsersData(data)
+    // Initialize MQTT client
+    initializeMQTT()
 
-      // Calculate aggregate real-time data from all users
-      if (data.length > 0) {
-        const latestUserData = data[0] // Use first user's data for main display
-        const heartRate = latestUserData.latestData.heartRate?.value || 0
-        const eegAlpha = latestUserData.latestData.eeg?.value || 0
-        const ecgSignal = latestUserData.latestData.ecg?.signal_quality || 0
+    // Fetch initial data
+    fetchLatestData()
 
-        // Calculate anxiety level based on heart rate and EEG
-        let anxietyLevel: "Low" | "Medium" | "High" = "Low"
-        if (heartRate > 100 || eegAlpha < 7) {
-          anxietyLevel = "High"
-        } else if (heartRate > 85 || eegAlpha < 8) {
-          anxietyLevel = "Medium"
-        }
+    // Set up polling for real-time updates
+    const interval = setInterval(fetchLatestData, 2000) // Poll every 2 seconds
 
-        setRealTimeData({
-          heartRate,
-          eegAlpha,
-          ecgSignal,
-          anxietyLevel,
-          lastUpdate: new Date(),
-          userId: latestUserData.user.firebase_uid,
-        })
-      }
-    } catch (error) {
-      console.error("Error fetching latest data:", error)
-      setConnectionStatus("disconnected")
+    return () => {
+      clearInterval(interval)
     }
-  }
+  }, [fetchLatestData, initializeMQTT])
+
+  // Helper functions to extract specific data types
+  const getHeartRate = useCallback((userData: UserWithData) => {
+    const heartRateData = userData.latestData.heartRate
+    return heartRateData ? heartRateData.value : null
+  }, [])
+
+  const getEEGData = useCallback((userData: UserWithData) => {
+    const eegData = userData.latestData.eeg
+    return eegData ? eegData.value : null
+  }, [])
+
+  const getECGData = useCallback((userData: UserWithData) => {
+    const ecgData = userData.latestData.ecg
+    return ecgData ? ecgData.value : null
+  }, [])
+
+  const getSignalQuality = useCallback((userData: UserWithData, dataType: string) => {
+    const sensorData = userData.latestData[dataType]
+    return sensorData ? sensorData.signal_quality : null
+  }, [])
 
   return {
-    realTimeData,
-    allUsersData,
+    data,
+    loading,
+    error,
     connectionStatus,
-    refreshData: fetchLatestData,
+    refetch: fetchLatestData,
+    getHeartRate,
+    getEEGData,
+    getECGData,
+    getSignalQuality,
   }
 }

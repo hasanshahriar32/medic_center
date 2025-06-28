@@ -1,86 +1,144 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { usePWA } from "@/hooks/usePWA"
-import { Download, Smartphone, X, CheckCircle } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { X, Download, Smartphone, Monitor, Wifi, Bell, Zap } from "lucide-react"
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>
+}
 
 export function PWAInstallPrompt() {
-  const { canInstall, isInstalled, isStandalone, installApp } = usePWA()
-  const [installing, setInstalling] = useState(false)
-  const [dismissed, setDismissed] = useState(false)
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [showPrompt, setShowPrompt] = useState(false)
+  const [isInstalled, setIsInstalled] = useState(false)
 
-  // Don't show if already installed or dismissed
-  if (isInstalled || isStandalone || dismissed || !canInstall) {
-    return null
-  }
+  useEffect(() => {
+    // Check if already installed
+    const checkInstalled = () => {
+      const isStandalone = window.matchMedia("(display-mode: standalone)").matches
+      const isInWebAppiOS = (window.navigator as any).standalone === true
+      const isInstalled = isStandalone || isInWebAppiOS
+      setIsInstalled(isInstalled)
+      return isInstalled
+    }
+
+    if (checkInstalled()) {
+      return
+    }
+
+    // Listen for beforeinstallprompt event
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault()
+      const promptEvent = e as BeforeInstallPromptEvent
+      setDeferredPrompt(promptEvent)
+      setShowPrompt(true)
+    }
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+
+    // Show prompt after a delay if not installed
+    const timer = setTimeout(() => {
+      if (!checkInstalled() && !deferredPrompt) {
+        setShowPrompt(true)
+      }
+    }, 5000)
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+      clearTimeout(timer)
+    }
+  }, [deferredPrompt])
 
   const handleInstall = async () => {
-    setInstalling(true)
-    try {
-      const success = await installApp()
-      if (success) {
-        console.log("App installed successfully")
-        setDismissed(true)
+    if (deferredPrompt) {
+      deferredPrompt.prompt()
+      const { outcome } = await deferredPrompt.userChoice
+
+      if (outcome === "accepted") {
+        setDeferredPrompt(null)
+        setShowPrompt(false)
       }
-    } catch (error) {
-      console.error("Installation failed:", error)
-    } finally {
-      setInstalling(false)
+    } else {
+      // Fallback for browsers that don't support the install prompt
+      alert(
+        'To install this app:\n\n1. Open browser menu\n2. Select "Add to Home Screen" or "Install App"\n3. Follow the prompts',
+      )
     }
   }
 
+  const handleDismiss = () => {
+    setShowPrompt(false)
+    // Don't show again for this session
+    sessionStorage.setItem("pwa-prompt-dismissed", "true")
+  }
+
+  // Don't show if already installed or dismissed
+  if (isInstalled || !showPrompt || sessionStorage.getItem("pwa-prompt-dismissed")) {
+    return null
+  }
+
   return (
-    <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 shadow-lg">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-blue-800 flex items-center gap-2">
-            <Smartphone className="w-5 h-5" />
-            Install MedWatch AI
-          </CardTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setDismissed(true)}
-            className="text-gray-400 hover:text-gray-600 w-8 h-8"
-          >
-            <X className="w-4 h-4" />
-          </Button>
+    <Card className="border-cyan-500/50 bg-gradient-to-r from-cyan-950/20 to-blue-950/20 relative">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleDismiss}
+        className="absolute top-2 right-2 h-8 w-8 p-0 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/30"
+      >
+        <X className="h-4 w-4" />
+      </Button>
+
+      <CardHeader className="pb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-cyan-500/20">
+            <Download className="h-6 w-6 text-cyan-400" />
+          </div>
+          <div>
+            <CardTitle className="text-cyan-400 text-lg sm:text-xl">Install Tactical Command Interface</CardTitle>
+            <CardDescription className="text-cyan-300/70">
+              Get the full app experience with offline access
+            </CardDescription>
+          </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-blue-700">
-          Install MedWatch AI as an app for faster access, offline capabilities, and push notifications.
-        </p>
 
-        <div className="grid grid-cols-2 gap-3 text-xs text-blue-600">
-          <div className="flex items-center gap-1">
-            <CheckCircle className="w-3 h-3" />
-            <span>Works offline</span>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="flex items-center gap-2 text-sm text-cyan-300">
+            <Wifi className="h-4 w-4 text-cyan-400" />
+            <span>Offline Access</span>
           </div>
-          <div className="flex items-center gap-1">
-            <CheckCircle className="w-3 h-3" />
-            <span>Push notifications</span>
+          <div className="flex items-center gap-2 text-sm text-cyan-300">
+            <Bell className="h-4 w-4 text-cyan-400" />
+            <span>Push Notifications</span>
           </div>
-          <div className="flex items-center gap-1">
-            <CheckCircle className="w-3 h-3" />
-            <span>Faster loading</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <CheckCircle className="w-3 h-3" />
-            <span>Home screen access</span>
+          <div className="flex items-center gap-2 text-sm text-cyan-300">
+            <Zap className="h-4 w-4 text-cyan-400" />
+            <span>Faster Loading</span>
           </div>
         </div>
 
-        <Button
-          onClick={handleInstall}
-          disabled={installing}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-        >
-          <Download className="w-4 h-4" />
-          {installing ? "Installing..." : "Install App"}
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button onClick={handleInstall} className="bg-cyan-600 hover:bg-cyan-700 text-white flex-1">
+            <Download className="h-4 w-4 mr-2" />
+            Install App
+          </Button>
+
+          <div className="flex gap-2">
+            <Badge variant="outline" className="border-cyan-500/50 text-cyan-400">
+              <Smartphone className="h-3 w-3 mr-1" />
+              Mobile
+            </Badge>
+            <Badge variant="outline" className="border-cyan-500/50 text-cyan-400">
+              <Monitor className="h-3 w-3 mr-1" />
+              Desktop
+            </Badge>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )

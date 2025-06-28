@@ -3,14 +3,33 @@ import { initializeMQTTClient } from "@/lib/mqtt-client"
 
 export async function POST() {
   try {
-    const client = initializeMQTTClient()
+    console.log("🚀 Starting MQTT client...")
 
-    return NextResponse.json({
-      success: true,
-      message: "MQTT client initialized and listening for data",
-    })
+    const client = await initializeMQTTClient()
+
+    if (client) {
+      console.log("✅ MQTT client started successfully")
+      return NextResponse.json({
+        success: true,
+        message: "MQTT client started successfully",
+        connected: client.connected,
+      })
+    } else {
+      console.log("⚠️ MQTT client initialization in progress")
+      return NextResponse.json({
+        success: true,
+        message: "MQTT client initialization in progress",
+      })
+    }
   } catch (error) {
-    console.error("Error starting MQTT client:", error)
-    return NextResponse.json({ error: "Failed to start MQTT client" }, { status: 500 })
+    console.error("❌ Failed to start MQTT client:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to start MQTT client",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }

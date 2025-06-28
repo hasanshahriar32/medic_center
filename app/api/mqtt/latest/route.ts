@@ -1,29 +1,34 @@
-import { NextResponse } from "next/server"
-import { getUsersWithLatestSensorData } from "@/lib/database"
+import { type NextRequest, NextResponse } from "next/server"
+import { getLatestSensorData, getAllUsers } from "@/lib/database"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    console.log("📡 Fetching latest MQTT data...")
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get("userId")
 
-    const usersWithData = await getUsersWithLatestSensorData()
-
-    console.log("📊 Retrieved data for", usersWithData.length, "users")
-
-    return NextResponse.json({
-      success: true,
-      data: usersWithData,
-      timestamp: new Date().toISOString(),
-      count: usersWithData.length,
-    })
+    if (userId) {
+      // Get latest data for specific user
+      const latestData = await getLatestSensorData(userId)
+      return NextResponse.json(latestData)
+    } else {
+      // Get latest data for all users
+      const users = await getAllUsers()
+      const allLatestData = await Promise.all(
+        users.map(async (user) => {
+          const latestData = await getLatestSensorData(user.id)
+          return {
+            user,
+            latestData: latestData.reduce((acc, data) => {
+              acc[data.data_type] = data
+              return acc
+            }, {} as any),
+          }
+        }),
+      )
+      return NextResponse.json(allLatestData)
+    }
   } catch (error) {
-    console.error("❌ Error fetching latest MQTT data:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch latest data",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    )
+    console.error("Error fetching latest MQTT data:", error)
+    return NextResponse.json({ error: "Failed to fetch latest data" }, { status: 500 })
   }
 }

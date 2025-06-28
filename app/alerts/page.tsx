@@ -104,7 +104,7 @@ export default function AlertsPage({ realTimeData = defaultRealTimeData }: Alert
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -118,7 +118,7 @@ export default function AlertsPage({ realTimeData = defaultRealTimeData }: Alert
       </div>
 
       {/* Alert Counters */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <CounterCard label="CRITICAL ALERTS" value={alertCounts.critical} color="red" />
         <CounterCard label="WARNINGS" value={alertCounts.warning} color="orange" />
         <CounterCard label="INFO ALERTS" value={alertCounts.info} color="blue" />
@@ -133,7 +133,7 @@ export default function AlertsPage({ realTimeData = defaultRealTimeData }: Alert
             Active Alerts
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-3 md:p-4">
+        <CardContent>
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -245,7 +245,7 @@ function CounterCard({
 
   return (
     <Card className={`bg-gradient-to-r ${bg} border-${color}-200`}>
-      <CardContent className="p-3 md:p-4">
+      <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className={`text-xs ${text} font-medium tracking-wider uppercase`}>{label}</p>

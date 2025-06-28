@@ -1,11 +1,30 @@
 "use client"
-
+import { AlertTriangle, Bell, Brain, CheckCircle, Clock, Heart, User, X } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { AlertTriangle, Bell, Clock, User, Heart, Brain, CheckCircle, X } from "lucide-react"
 
-export default function AlertsPage({ realTimeData }) {
+type RealTimeData = {
+  heartRate: number
+  eegAlpha: number
+  ecgSignal: number
+  anxietyLevel: "Low" | "Medium" | "High"
+  lastUpdate: Date
+}
+
+interface AlertsPageProps {
+  realTimeData?: RealTimeData
+}
+
+export default function AlertsPage({
+  realTimeData = {
+    heartRate: 0,
+    eegAlpha: 0,
+    ecgSignal: 0,
+    anxietyLevel: "Low",
+    lastUpdate: new Date(),
+  },
+}: AlertsPageProps) {
   const alerts = [
     {
       id: "ALT-001",

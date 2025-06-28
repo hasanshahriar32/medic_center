@@ -1,149 +1,108 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useEffect, useState } from "react"
 
-interface SensorData {
-  id: string
-  user_id: string
-  data_type: string
-  value: number
-  signal_quality?: number
-  created_at: string
-  metadata?: any
+interface RealTimeData {
+  heartRate: number
+  eegAlpha: number
+  ecgSignal: number
+  anxietyLevel: "Low" | "Medium" | "High"
+  lastUpdate: Date
+  userId?: string
 }
 
 interface UserData {
-  user: {
-    id: string
-    firebase_uid: string
-    name: string
-    email: string
+  user: any
+  latestData: {
+    heartRate?: any
+    eeg?: any
+    ecg?: any
   }
-  sensorData: SensorData[]
-  lastUpdated: string
-  error?: string
-}
-
-interface RealTimeData {
-  heartRate?: number
-  eegAlpha?: number
-  ecgSignal?: number
-  signalQuality?: number
-  lastUpdated?: string
-  connectionStatus: "connecting" | "connected" | "disconnected" | "error"
 }
 
 export function useRealTimeData() {
-  const [data, setData] = useState<RealTimeData>({
-    connectionStatus: "connecting",
+  const [realTimeData, setRealTimeData] = useState<RealTimeData>({
+    heartRate: 0,
+    eegAlpha: 0,
+    ecgSignal: 0,
+    anxietyLevel: "Low",
+    lastUpdate: new Date(),
   })
-  const [users, setUsers] = useState<UserData[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [allUsersData, setAllUsersData] = useState<UserData[]>([])
+  const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected">("disconnected")
 
-  // Initialize MQTT client
-  const initializeMQTT = useCallback(async () => {
+  useEffect(() => {
+    // Initialize MQTT client on the server
+    initializeMQTT()
+
+    // Poll for latest data every 2 seconds
+    const interval = setInterval(() => {
+      fetchLatestData()
+    }, 2000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const initializeMQTT = async () => {
     try {
-      console.log("🚀 Initializing real-time data hook...")
-      setData((prev) => ({ ...prev, connectionStatus: "connecting" }))
-
-      console.log("🔌 Initializing MQTT client...")
       const response = await fetch("/api/mqtt/start", {
         method: "POST",
       })
 
       if (response.ok) {
-        const result = await response.json()
-        console.log("✅ MQTT client initialized successfully:", result)
-        setData((prev) => ({ ...prev, connectionStatus: "connected" }))
+        setConnectionStatus("connected")
+        console.log("MQTT client initialized")
       } else {
-        console.error("❌ Failed to initialize MQTT client")
-        setData((prev) => ({ ...prev, connectionStatus: "error" }))
+        setConnectionStatus("disconnected")
+        console.error("Failed to initialize MQTT client")
       }
     } catch (error) {
-      console.error("❌ Error initializing MQTT client:", error)
-      setData((prev) => ({ ...prev, connectionStatus: "error" }))
+      console.error("Error initializing MQTT:", error)
+      setConnectionStatus("disconnected")
     }
-  }, [])
+  }
 
-  // Fetch latest data
-  const fetchLatestData = useCallback(async () => {
+  const fetchLatestData = async () => {
     try {
-      console.log("📡 Fetching latest data...")
       const response = await fetch("/api/mqtt/latest")
+      const data: UserData[] = await response.json()
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
+      setAllUsersData(data)
 
-      const result = await response.json()
-      console.log("📊 Received data:", result)
+      // Calculate aggregate real-time data from all users
+      if (data.length > 0) {
+        const latestUserData = data[0] // Use first user's data for main display
+        const heartRate = latestUserData.latestData.heartRate?.value || 0
+        const eegAlpha = latestUserData.latestData.eeg?.value || 0
+        const ecgSignal = latestUserData.latestData.ecg?.signal_quality || 0
 
-      if (result.success && result.data) {
-        setUsers(result.data)
-
-        // Process the latest sensor data for display
-        const latestData: RealTimeData = {
-          connectionStatus: "connected",
-          lastUpdated: result.timestamp,
+        // Calculate anxiety level based on heart rate and EEG
+        let anxietyLevel: "Low" | "Medium" | "High" = "Low"
+        if (heartRate > 100 || eegAlpha < 7) {
+          anxietyLevel = "High"
+        } else if (heartRate > 85 || eegAlpha < 8) {
+          anxietyLevel = "Medium"
         }
 
-        // Find the most recent data across all users
-        for (const userData of result.data) {
-          for (const sensor of userData.sensorData || []) {
-            switch (sensor.data_type) {
-              case "heartRate":
-                console.log("💓 Heart Rate:", sensor.value, "BPM")
-                latestData.heartRate = sensor.value
-                latestData.signalQuality = sensor.signal_quality
-                break
-              case "eeg":
-                console.log("🧠 EEG Alpha:", sensor.value, "Hz")
-                latestData.eegAlpha = sensor.value
-                break
-              case "ecg":
-                console.log("📈 ECG Signal:", sensor.value, "%")
-                latestData.ecgSignal = sensor.value
-                break
-            }
-          }
-        }
-
-        setData(latestData)
-        setError(null)
-      } else {
-        throw new Error(result.error || "No data received")
+        setRealTimeData({
+          heartRate,
+          eegAlpha,
+          ecgSignal,
+          anxietyLevel,
+          lastUpdate: new Date(),
+          userId: latestUserData.user.firebase_uid,
+        })
       }
     } catch (error) {
-      console.error("❌ Error fetching latest data:", error)
-      setError(error instanceof Error ? error.message : "Failed to fetch data")
-      setData((prev) => ({ ...prev, connectionStatus: "error" }))
-    } finally {
-      setIsLoading(false)
+      console.error("Error fetching latest data:", error)
+      setConnectionStatus("disconnected")
     }
-  }, [])
-
-  // Initialize on mount
-  useEffect(() => {
-    initializeMQTT()
-  }, [initializeMQTT])
-
-  // Poll for latest data every 2 seconds
-  useEffect(() => {
-    const interval = setInterval(fetchLatestData, 2000)
-
-    // Initial fetch
-    fetchLatestData()
-
-    return () => clearInterval(interval)
-  }, [fetchLatestData])
+  }
 
   return {
-    data,
-    users,
-    isLoading,
-    error,
-    refetch: fetchLatestData,
-    initializeMQTT,
+    realTimeData,
+    allUsersData,
+    connectionStatus,
+    refreshData: fetchLatestData,
   }
 }

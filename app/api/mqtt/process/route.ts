@@ -10,24 +10,28 @@ interface MQTTData {
   ecgSignal?: number
   timestamp?: string
   metadata?: any
+  deviceId?: string
 }
 
 export async function POST(request: NextRequest) {
   try {
     const data: MQTTData = await request.json()
-    console.log("Processing MQTT data:", data)
+    console.log("📨 API: Processing MQTT data:", data)
 
     // Get user from database using Firebase UID
     const user = await getUserByFirebaseUid(data.userId)
     if (!user) {
-      console.error("User not found for Firebase UID:", data.userId)
+      console.error("❌ User not found for Firebase UID:", data.userId)
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
+
+    console.log("👤 Found user:", user.name)
 
     const sensorDataEntries = []
 
     // Process different types of sensor data
     if (data.bpm !== undefined) {
+      console.log("💓 Processing heart rate data:", data.bpm)
       const heartRateData = await insertSensorData({
         user_id: user.id,
         data_type: "heartRate",
@@ -35,6 +39,7 @@ export async function POST(request: NextRequest) {
         signal_quality: data.signal,
         metadata: {
           timestamp: data.timestamp,
+          deviceId: data.deviceId,
           ...data.metadata,
         },
       })
@@ -42,6 +47,7 @@ export async function POST(request: NextRequest) {
 
       // Check for heart rate alerts
       if (data.bpm > 100) {
+        console.log("⚠️ Creating heart rate warning alert")
         await createAlert({
           user_id: user.id,
           type: "warning",
@@ -49,6 +55,7 @@ export async function POST(request: NextRequest) {
           description: `Heart rate of ${data.bpm} BPM detected for ${user.name}`,
         })
       } else if (data.bpm > 120) {
+        console.log("🚨 Creating critical heart rate alert")
         await createAlert({
           user_id: user.id,
           type: "critical",
@@ -59,6 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (data.eegAlpha !== undefined) {
+      console.log("🧠 Processing EEG data:", data.eegAlpha)
       const eegData = await insertSensorData({
         user_id: user.id,
         data_type: "eeg",
@@ -66,6 +74,7 @@ export async function POST(request: NextRequest) {
         signal_quality: data.signal,
         metadata: {
           timestamp: data.timestamp,
+          deviceId: data.deviceId,
           ...data.metadata,
         },
       })
@@ -73,6 +82,7 @@ export async function POST(request: NextRequest) {
 
       // Check for EEG alerts
       if (data.eegAlpha < 7) {
+        console.log("⚠️ Creating EEG warning alert")
         await createAlert({
           user_id: user.id,
           type: "warning",
@@ -83,6 +93,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (data.ecgSignal !== undefined) {
+      console.log("📈 Processing ECG data:", data.ecgSignal)
       const ecgData = await insertSensorData({
         user_id: user.id,
         data_type: "ecg",
@@ -90,6 +101,7 @@ export async function POST(request: NextRequest) {
         signal_quality: data.signal,
         metadata: {
           timestamp: data.timestamp,
+          deviceId: data.deviceId,
           ...data.metadata,
         },
       })
@@ -97,6 +109,7 @@ export async function POST(request: NextRequest) {
 
       // Check for ECG signal quality alerts
       if (data.ecgSignal < 70) {
+        console.log("⚠️ Creating ECG signal quality alert")
         await createAlert({
           user_id: user.id,
           type: "warning",
@@ -106,8 +119,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Broadcast real-time data to connected clients
-    await broadcastRealTimeData(user.id, data)
+    console.log("✅ MQTT data processed successfully via API")
 
     return NextResponse.json({
       success: true,
@@ -115,19 +127,13 @@ export async function POST(request: NextRequest) {
       user: user.name,
     })
   } catch (error) {
-    console.error("Error processing MQTT data:", error)
-    return NextResponse.json({ error: "Failed to process MQTT data" }, { status: 500 })
-  }
-}
-
-async function broadcastRealTimeData(userId: string, data: MQTTData) {
-  // Store the latest data in a cache or database for real-time access
-  // This could be Redis, but for now we'll use the database
-  try {
-    // You could implement a real-time broadcasting mechanism here
-    // For now, we'll rely on polling from the frontend
-    console.log(`Broadcasting real-time data for user ${userId}:`, data)
-  } catch (error) {
-    console.error("Error broadcasting real-time data:", error)
+    console.error("❌ Error processing MQTT data via API:", error)
+    return NextResponse.json(
+      {
+        error: "Failed to process MQTT data",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }

@@ -3,8 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth"
-import { auth } from "@/lib/firebase-client"
+import { signInWithEmail, createUserWithEmail } from "@/lib/firebase-auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,9 +27,9 @@ export default function LoginPage() {
 
     try {
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password)
+        await signInWithEmail(email, password)
       } else {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+        const userCredential = await createUserWithEmail(email, password)
 
         // Create user in database
         await fetch("/api/users", {

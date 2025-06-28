@@ -1,0 +1,441 @@
+/**
+ * MQTT Data Format Specification for MedWatch AI
+ *
+ * This document defines the complete data structure that IoT devices
+ * should send via MQTT to integrate with the MedWatch AI system.
+ */
+
+// ============================================================================
+// MQTT CONNECTION SETTINGS
+// ============================================================================
+export const MQTT_CONFIG = {
+  broker: "mqtts://38f07a1ee3754972a26af0f040402fde.s1.eu.hivemq.cloud:8883",
+  username: "Paradox", // Your HiveMQ username
+  password: "Paradox1", // Your HiveMQ password
+  topics: {
+    heartRate: "mrhasan/heart",
+    eeg: "mrhasan/eeg",
+    ecg: "mrhasan/ecg",
+    vitals: "mrhasan/vitals", // For multiple sensor data
+    alerts: "mrhasan/alerts", // For emergency alerts
+  },
+}
+
+// ============================================================================
+// CORE DATA INTERFACES
+// ============================================================================
+
+/**
+ * Base interface for all MQTT messages
+ */
+export interface BaseMQTTMessage {
+  userId: string // Firebase UID from dashboard (REQUIRED)
+  timestamp: string // ISO 8601 format: "2025-01-28T10:43:51.123Z"
+  deviceId?: string // Unique device identifier
+  sessionId?: string // Session/measurement ID
+  metadata?: {
+    deviceType?: string // e.g., "Arduino", "ESP32", "Raspberry Pi"
+    firmwareVersion?: string
+    batteryLevel?: number // 0-100
+    signalStrength?: number // WiFi/cellular signal strength
+    location?: {
+      latitude?: number
+      longitude?: number
+    }
+    [key: string]: any // Additional custom metadata
+  }
+}
+
+/**
+ * Heart Rate Data Message
+ * Topic: mrhasan/heart
+ */
+export interface HeartRateMessage extends BaseMQTTMessage {
+  dataType: "heartRate"
+  bpm: number // Beats per minute (40-200 typical range)
+  signal?: number // Signal quality 0-100%
+  rr_intervals?: number[] // R-R intervals in milliseconds for HRV
+  confidence?: number // Measurement confidence 0-100%
+}
+
+/**
+ * EEG Data Message
+ * Topic: mrhasan/eeg
+ */
+export interface EEGMessage extends BaseMQTTMessage {
+  dataType: "eeg"
+  eegAlpha: number // Alpha wave frequency (Hz)
+  signal?: number // Signal quality 0-100%
+  channels?: {
+    alpha?: number // Alpha waves (8-12 Hz)
+    beta?: number // Beta waves (12-30 Hz)
+    theta?: number // Theta waves (4-8 Hz)
+    delta?: number // Delta waves (0.5-4 Hz)
+    gamma?: number // Gamma waves (30-100 Hz)
+  }
+  electrodes?: {
+    [electrode: string]: number // e.g., "Fp1": 12.5, "Fp2": 11.8
+  }
+  samplingRate?: number // Sampling rate in Hz
+}
+
+/**
+ * ECG Data Message
+ * Topic: mrhasan/ecg
+ */
+export interface ECGMessage extends BaseMQTTMessage {
+  dataType: "ecg"
+  ecgSignal: number // Signal quality 0-100%
+  signal?: number // Alias for ecgSignal
+  heartRate?: number // Derived heart rate from ECG
+  qrs_complex?: {
+    q_wave?: number
+    r_wave?: number
+    s_wave?: number
+  }
+  intervals?: {
+    pr_interval?: number // PR interval in ms
+    qt_interval?: number // QT interval in ms
+    rr_interval?: number // RR interval in ms
+  }
+  rawData?: number[] // Raw ECG samples
+}
+
+/**
+ * Multi-Sensor Vitals Message
+ * Topic: mrhasan/vitals
+ */
+export interface VitalsMessage extends BaseMQTTMessage {
+  dataType: "vitals"
+  vitals: {
+    heartRate?: {
+      bpm: number
+      signal?: number
+      confidence?: number
+    }
+    eeg?: {
+      alpha: number
+      beta?: number
+      theta?: number
+      delta?: number
+      signal?: number
+    }
+    ecg?: {
+      signal: number
+      heartRate?: number
+      intervals?: {
+        pr?: number
+        qt?: number
+        rr?: number
+      }
+    }
+    bloodPressure?: {
+      systolic: number // mmHg
+      diastolic: number // mmHg
+      pulse?: number
+    }
+    temperature?: {
+      celsius: number // Body temperature
+      sensor?: "skin" | "core" | "ambient"
+    }
+    oxygenSaturation?: {
+      spo2: number // 0-100%
+      signal?: number
+    }
+    respiratoryRate?: {
+      rate: number // breaths per minute
+      pattern?: "normal" | "irregular" | "shallow" | "deep"
+    }
+    skinConductance?: {
+      microsiemens: number // Galvanic skin response
+    }
+    movement?: {
+      accelerometer?: {
+        x: number
+        y: number
+        z: number
+      }
+      gyroscope?: {
+        x: number
+        y: number
+        z: number
+      }
+      steps?: number
+      activity?: "resting" | "walking" | "running" | "sleeping"
+    }
+  }
+}
+
+/**
+ * Emergency Alert Message
+ * Topic: mrhasan/alerts
+ */
+export interface AlertMessage extends BaseMQTTMessage {
+  dataType: "alert"
+  alertType: "panic_attack" | "high_heart_rate" | "low_signal" | "device_error" | "fall_detected" | "custom"
+  severity: "low" | "medium" | "high" | "critical"
+  title: string
+  description: string
+  triggerValues?: {
+    heartRate?: number
+    eegAlpha?: number
+    [key: string]: any
+  }
+  autoGenerated: boolean // true if generated by device algorithm
+}
+
+// ============================================================================
+// EXAMPLE MESSAGES
+// ============================================================================
+
+/**
+ * Example: Simple Heart Rate Message
+ */
+export const EXAMPLE_HEART_RATE: HeartRateMessage = {
+  userId: "abc123def456ghi789", // Firebase UID from dashboard
+  dataType: "heartRate",
+  bpm: 75,
+  signal: 85,
+  timestamp: "2025-01-28T10:43:51.123Z",
+  deviceId: "esp32_001",
+  metadata: {
+    deviceType: "ESP32",
+    firmwareVersion: "1.2.3",
+    batteryLevel: 87,
+  },
+}
+
+/**
+ * Example: EEG Message with Multiple Channels
+ */
+export const EXAMPLE_EEG: EEGMessage = {
+  userId: "abc123def456ghi789",
+  dataType: "eeg",
+  eegAlpha: 8.5,
+  signal: 92,
+  timestamp: "2025-01-28T10:43:52.456Z",
+  channels: {
+    alpha: 8.5,
+    beta: 15.2,
+    theta: 6.1,
+    delta: 2.8,
+  },
+  samplingRate: 256,
+  deviceId: "neurosky_001",
+}
+
+/**
+ * Example: Combined Vitals Message
+ */
+export const EXAMPLE_VITALS: VitalsMessage = {
+  userId: "abc123def456ghi789",
+  dataType: "vitals",
+  timestamp: "2025-01-28T10:43:53.789Z",
+  vitals: {
+    heartRate: {
+      bpm: 78,
+      signal: 88,
+      confidence: 95,
+    },
+    eeg: {
+      alpha: 9.2,
+      beta: 14.8,
+      signal: 90,
+    },
+    bloodPressure: {
+      systolic: 120,
+      diastolic: 80,
+      pulse: 78,
+    },
+    temperature: {
+      celsius: 36.7,
+      sensor: "skin",
+    },
+    oxygenSaturation: {
+      spo2: 98,
+      signal: 85,
+    },
+  },
+  deviceId: "multi_sensor_001",
+}
+
+/**
+ * Example: Emergency Alert
+ */
+export const EXAMPLE_ALERT: AlertMessage = {
+  userId: "abc123def456ghi789",
+  dataType: "alert",
+  alertType: "panic_attack",
+  severity: "high",
+  title: "Potential Panic Attack Detected",
+  description: "Heart rate elevated to 145 BPM with low alpha waves detected",
+  timestamp: "2025-01-28T10:44:00.000Z",
+  triggerValues: {
+    heartRate: 145,
+    eegAlpha: 6.2,
+  },
+  autoGenerated: true,
+  deviceId: "wearable_001",
+}
+
+// ============================================================================
+// ARDUINO/ESP32 CODE EXAMPLES
+// ============================================================================
+
+/**
+ * Arduino/ESP32 Example Code
+ *
+ * ```cpp
+ * #include <WiFi.h>
+ * #include <PubSubClient.h>
+ * #include <ArduinoJson.h>
+ *
+ * const char* ssid = "your_wifi_ssid";
+ * const char* password = "your_wifi_password";
+ * const char* mqtt_server = "38f07a1ee3754972a26af0f040402fde.s1.eu.hivemq.cloud";
+ * const int mqtt_port = 8883;
+ * const char* mqtt_user = "Paradox";
+ * const char* mqtt_pass = "Paradox1";
+ * const char* user_id = "abc123def456ghi789"; // Get from dashboard
+ *
+ * WiFiClientSecure espClient;
+ * PubSubClient client(espClient);
+ *
+ * void sendHeartRateData(int bpm, int signal) {
+ *   StaticJsonDocument<300> doc;
+ *   doc["userId"] = user_id;
+ *   doc["dataType"] = "heartRate";
+ *   doc["bpm"] = bpm;
+ *   doc["signal"] = signal;
+ *   doc["timestamp"] = getISOTimestamp();
+ *   doc["deviceId"] = "esp32_001";
+ *
+ *   char buffer[300];
+ *   serializeJson(doc, buffer);
+ *   client.publish("mrhasan/heart", buffer);
+ * }
+ *
+ * void sendEEGData(float alpha, int signal) {
+ *   StaticJsonDocument<400> doc;
+ *   doc["userId"] = user_id;
+ *   doc["dataType"] = "eeg";
+ *   doc["eegAlpha"] = alpha;
+ *   doc["signal"] = signal;
+ *   doc["timestamp"] = getISOTimestamp();
+ *   doc["deviceId"] = "esp32_001";
+ *
+ *   char buffer[400];
+ *   serializeJson(doc, buffer);
+ *   client.publish("mrhasan/eeg", buffer);
+ * }
+ * ```
+ */
+
+// ============================================================================
+// PYTHON EXAMPLE (for Raspberry Pi)
+// ============================================================================
+
+/**
+ * Python Example Code
+ *
+ * ```python
+ * import paho.mqtt.client as mqtt
+ * import json
+ * import time
+ * from datetime import datetime
+ *
+ * MQTT_BROKER = "38f07a1ee3754972a26af0f040402fde.s1.eu.hivemq.cloud"
+ * MQTT_PORT = 8883
+ * MQTT_USER = "Paradox"
+ * MQTT_PASS = "Paradox1"
+ * USER_ID = "abc123def456ghi789"  # Get from dashboard
+ *
+ * def on_connect(client, userdata, flags, rc):
+ *     print(f"Connected with result code {rc}")
+ *
+ * client = mqtt.Client()
+ * client.username_pw_set(MQTT_USER, MQTT_PASS)
+ * client.tls_set()
+ * client.on_connect = on_connect
+ * client.connect(MQTT_BROKER, MQTT_PORT, 60)
+ *
+ * def send_heart_rate(bpm, signal=85):
+ *     data = {
+ *         "userId": USER_ID,
+ *         "dataType": "heartRate",
+ *         "bpm": bpm,
+ *         "signal": signal,
+ *         "timestamp": datetime.utcnow().isoformat() + "Z",
+ *         "deviceId": "raspberry_pi_001"
+ *     }
+ *     client.publish("mrhasan/heart", json.dumps(data))
+ *
+ * def send_eeg_data(alpha, signal=90):
+ *     data = {
+ *         "userId": USER_ID,
+ *         "dataType": "eeg",
+ *         "eegAlpha": alpha,
+ *         "signal": signal,
+ *         "timestamp": datetime.utcnow().isoformat() + "Z",
+ *         "deviceId": "raspberry_pi_001"
+ *     }
+ *     client.publish("mrhasan/eeg", json.dumps(data))
+ *
+ * # Example usage
+ * while True:
+ *     send_heart_rate(75 + random.randint(-10, 10))
+ *     send_eeg_data(8.5 + random.uniform(-1, 1))
+ *     time.sleep(2)
+ * ```
+ */
+
+// ============================================================================
+// VALIDATION RULES
+// ============================================================================
+
+export const VALIDATION_RULES = {
+  heartRate: {
+    bpm: { min: 30, max: 220 },
+    signal: { min: 0, max: 100 },
+  },
+  eeg: {
+    alpha: { min: 0, max: 20 },
+    beta: { min: 0, max: 50 },
+    theta: { min: 0, max: 15 },
+    delta: { min: 0, max: 10 },
+    signal: { min: 0, max: 100 },
+  },
+  ecg: {
+    signal: { min: 0, max: 100 },
+    heartRate: { min: 30, max: 220 },
+  },
+  bloodPressure: {
+    systolic: { min: 70, max: 250 },
+    diastolic: { min: 40, max: 150 },
+  },
+  temperature: {
+    celsius: { min: 30, max: 45 },
+  },
+  oxygenSaturation: {
+    spo2: { min: 70, max: 100 },
+  },
+}
+
+// ============================================================================
+// ALERT THRESHOLDS
+// ============================================================================
+
+export const ALERT_THRESHOLDS = {
+  heartRate: {
+    high: 100, // BPM
+    critical: 120, // BPM
+  },
+  eegAlpha: {
+    low: 7, // Hz - indicates stress
+    critical: 6, // Hz - high stress/anxiety
+  },
+  signalQuality: {
+    poor: 70, // Below 70% signal quality
+    critical: 50, // Below 50% signal quality
+  },
+}

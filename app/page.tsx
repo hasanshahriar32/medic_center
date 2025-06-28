@@ -5,6 +5,8 @@ import { onAuthStateChangedClient, signOutClient } from "@/lib/firebase-auth"
 import { ChevronRight, Activity, Heart, Brain, AlertTriangle, Bell, RefreshCw, Zap, LogOut, Wifi } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRealTimeData } from "@/hooks/useRealTimeData"
+import { PWAInstallButton } from "@/components/pwa-install-button"
+import { PWAStatus } from "@/components/pwa-status"
 import PatientMonitoringPage from "./patient-monitoring/page"
 import VitalSignsPage from "./vital-signs/page"
 import PredictiveAnalyticsPage from "./predictive-analytics/page"
@@ -21,6 +23,13 @@ export default function MedicalDashboard() {
   const { realTimeData, connectionStatus, refreshData } = useRealTimeData()
 
   useEffect(() => {
+    // Check URL parameters for section
+    const urlParams = new URLSearchParams(window.location.search)
+    const section = urlParams.get("section")
+    if (section) {
+      setActiveSection(section)
+    }
+
     const unsubscribePromise = onAuthStateChangedClient((user) => {
       if (user) {
         setUser(user)
@@ -191,6 +200,7 @@ export default function MedicalDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <PWAStatus />
             <div className="text-xs text-gray-500">Last Sync: {new Date().toLocaleTimeString()}</div>
             <div className="flex items-center gap-2">
               <div
@@ -211,17 +221,25 @@ export default function MedicalDashboard() {
 
         {/* Dashboard Content */}
         <div className="flex-1 overflow-auto bg-gradient-to-br from-blue-50 to-indigo-100">
-          {activeSection === "monitoring" && <PatientMonitoringPage realTimeData={realTimeData} />}
+          {activeSection === "monitoring" && (
+            <div className="space-y-6">
+              <div className="p-6 pb-0">
+                <PWAInstallButton />
+              </div>
+              <PatientMonitoringPage realTimeData={realTimeData} />
+            </div>
+          )}
           {activeSection === "vitals" && <VitalSignsPage realTimeData={realTimeData} />}
           {activeSection === "analytics" && <PredictiveAnalyticsPage realTimeData={realTimeData} />}
           {activeSection === "alerts" && <AlertsPage realTimeData={realTimeData} />}
           {activeSection === "system" && <SystemStatusPage realTimeData={realTimeData} />}
           {activeSection === "mqtt" && (
-            <div className="p-6">
+            <div className="p-6 space-y-6">
               <div className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-800">MQTT Setup Instructions</h1>
                 <p className="text-sm text-gray-600">Configure your IoT devices to send sensor data</p>
               </div>
+              <PWAInstallButton />
               {user && <MQTTInstructions userId={user.uid} />}
             </div>
           )}

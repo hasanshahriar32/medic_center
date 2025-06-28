@@ -61,25 +61,33 @@ export function PWAInstallButton() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 md:space-y-4">
       {/* Install Button */}
       {canInstall && (
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 md:gap-2">
           <Button
             onClick={handleInstall}
             disabled={installing}
-            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 w-full sm:w-auto"
           >
             <Download className="w-4 h-4" />
             {installing ? "Installing..." : "Install App"}
           </Button>
 
-          <Button variant="outline" onClick={() => setShowDetails(!showDetails)} className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowDetails(!showDetails)}
+            className="flex items-center gap-2 w-full sm:w-auto"
+          >
             <Smartphone className="w-4 h-4" />
             Why Install?
           </Button>
 
-          <Button variant="outline" onClick={handleShare} className="flex items-center gap-2 bg-transparent">
+          <Button
+            variant="outline"
+            onClick={handleShare}
+            className="flex items-center gap-2 bg-transparent w-full sm:w-auto"
+          >
             <Share className="w-4 h-4" />
             Share
           </Button>

@@ -102,7 +102,7 @@ export default function SystemStatusPage({
     (systemComponents.filter((comp) => comp.status === "online").length / systemComponents.length) * 100
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -119,8 +119,8 @@ export default function SystemStatusPage({
             Overall System Health
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <CardContent className="p-3 md:p-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             <div className="text-center">
               <div className="text-4xl font-bold font-mono text-blue-600 mb-2">{overallHealth.toFixed(1)}%</div>
               <p className="text-sm text-gray-600">System Availability</p>

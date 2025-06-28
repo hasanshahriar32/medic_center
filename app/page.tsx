@@ -13,6 +13,8 @@ import PredictiveAnalyticsPage from "./predictive-analytics/page"
 import AlertsPage from "./alerts/page"
 import SystemStatusPage from "./system-status/page"
 import { MQTTInstructions } from "@/components/mqtt-instructions"
+import { PWAInstallPrompt } from "@/components/pwa-install-prompt"
+import { PWAInstallButtonHeader } from "@/components/pwa-install-button-header"
 
 export default function MedicalDashboard() {
   const [activeSection, setActiveSection] = useState("monitoring")
@@ -69,7 +71,7 @@ export default function MedicalDashboard() {
     <div className="flex h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Sidebar */}
       <div
-        className={`${sidebarCollapsed ? "w-16" : "w-72"} bg-white border-r border-gray-200 shadow-lg transition-all duration-300 fixed md:relative z-50 md:z-auto h-full md:h-auto ${!sidebarCollapsed ? "md:block" : ""}`}
+        className={`${sidebarCollapsed ? "w-16" : "w-80 md:w-72"} bg-white border-r border-gray-200 shadow-lg transition-all duration-300 fixed md:relative z-50 md:z-auto h-full`}
       >
         <div className="p-4">
           <div className="flex items-center justify-between mb-8">
@@ -92,10 +94,10 @@ export default function MedicalDashboard() {
               variant="ghost"
               size="icon"
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="text-gray-400 hover:text-blue-600"
+              className="text-gray-400 hover:text-blue-600 md:w-8 md:h-8 w-12 h-12 flex-shrink-0"
             >
               <ChevronRight
-                className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform ${sidebarCollapsed ? "" : "rotate-180"}`}
+                className={`transition-transform md:w-4 md:h-4 w-6 h-6 ${sidebarCollapsed ? "" : "rotate-180"}`}
               />
             </Button>
           </div>
@@ -112,7 +114,7 @@ export default function MedicalDashboard() {
               <button
                 key={item.id}
                 onClick={() => setActiveSection(item.id)}
-                className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                className={`w-full flex items-center gap-3 p-4 md:p-3 rounded-lg transition-colors text-left ${
                   activeSection === item.id
                     ? "bg-blue-50 text-blue-600 border border-blue-200"
                     : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
@@ -179,12 +181,20 @@ export default function MedicalDashboard() {
       {/* Main Content */}
       <div className={`flex-1 flex flex-col ${!sidebarCollapsed ? "md:ml-0" : ""}`}>
         {/* Top Header */}
-        <div className="h-16 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between px-6">
-          <div className="flex items-center gap-4">
+        <div className="h-16 md:h-16 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between px-4 md:px-6">
+          <div className="flex items-center gap-2 md:gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="md:hidden text-gray-400 hover:text-blue-600 w-10 h-10"
+            >
+              <ChevronRight className={`w-5 h-5 transition-transform ${sidebarCollapsed ? "" : "rotate-180"}`} />
+            </Button>
             <div className="text-sm text-gray-600">
-              <span className="font-medium text-gray-800">MQTT Medical Monitoring</span>
-              <span className="mx-2">•</span>
-              <span className="text-blue-600 font-medium">
+              <span className="font-medium text-gray-800 hidden md:inline">MQTT Medical Monitoring</span>
+              <span className="mx-2 hidden md:inline">•</span>
+              <span className="text-blue-600 font-medium text-xs md:text-sm">
                 {activeSection === "monitoring"
                   ? "Patient Monitoring"
                   : activeSection === "vitals"
@@ -199,21 +209,31 @@ export default function MedicalDashboard() {
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
+            <PWAInstallButtonHeader />
             <PWAStatus />
-            <div className="text-xs text-gray-500">Last Sync: {new Date().toLocaleTimeString()}</div>
-            <div className="flex items-center gap-2">
+            <div className="text-xs text-gray-500 hidden md:block">Last Sync: {new Date().toLocaleTimeString()}</div>
+            <div className="flex items-center gap-1 md:gap-2">
               <div
                 className={`w-2 h-2 rounded-full ${connectionStatus === "connected" ? "bg-green-500" : "bg-red-500"}`}
               ></div>
-              <span className="text-xs text-gray-600">
+              <span className="text-xs text-gray-600 hidden md:inline">
                 {connectionStatus === "connected" ? "MQTT Connected" : "MQTT Disconnected"}
               </span>
             </div>
-            <Button variant="ghost" size="icon" className="text-gray-400 hover:text-blue-600">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-gray-400 hover:text-blue-600 w-8 h-8 md:w-auto md:h-auto"
+            >
               <Bell className="w-4 h-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="text-gray-400 hover:text-blue-600" onClick={refreshData}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-gray-400 hover:text-blue-600 w-8 h-8 md:w-auto md:h-auto"
+              onClick={refreshData}
+            >
               <RefreshCw className="w-4 h-4" />
             </Button>
           </div>
@@ -223,8 +243,8 @@ export default function MedicalDashboard() {
         <div className="flex-1 overflow-auto bg-gradient-to-br from-blue-50 to-indigo-100">
           {activeSection === "monitoring" && (
             <div className="space-y-6">
-              <div className="p-6 pb-0">
-                <PWAInstallButton />
+              <div className="p-4 md:p-6 pb-0">
+                <PWAInstallPrompt />
               </div>
               <PatientMonitoringPage realTimeData={realTimeData} />
             </div>

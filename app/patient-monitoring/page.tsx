@@ -114,7 +114,7 @@ export default function PatientMonitoringPage({
   const patientsWithRecentData = patientsWithData.filter((p) => p.hasRecentData)
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -124,9 +124,9 @@ export default function PatientMonitoringPage({
       </div>
 
       {/* Real-time Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         <Card className="bg-gradient-to-r from-red-50 to-pink-50 border-red-200">
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-red-600 font-medium tracking-wider">HEART RATE</p>
@@ -142,7 +142,7 @@ export default function PatientMonitoringPage({
         </Card>
 
         <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200">
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-purple-600 font-medium tracking-wider">EEG ALPHA WAVES</p>
@@ -158,7 +158,7 @@ export default function PatientMonitoringPage({
         </Card>
 
         <Card className="bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200">
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-blue-600 font-medium tracking-wider">ECG SIGNAL</p>
@@ -182,7 +182,7 @@ export default function PatientMonitoringPage({
                 : "from-green-50 to-green-100 border-green-300"
           }`}
         >
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium tracking-wider text-gray-600">ANXIETY LEVEL</p>

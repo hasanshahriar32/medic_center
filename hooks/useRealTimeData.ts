@@ -3,6 +3,24 @@
 import { useEffect, useState } from "react"
 
 interface RealTimeData {
+  userId: string
+  dataType: string
+  bpm?: number
+  eegAlpha?: number
+  ecgSignal?: number
+  signal?: number
+  timestamp: string
+  deviceId?: string
+}
+
+interface RealTimeResponse {
+  success: boolean
+  data: Record<string, Record<string, RealTimeData>>
+  subscribers: number
+  timestamp: string
+}
+
+interface DisplayData {
   heartRate: number
   eegAlpha: number
   ecgSignal: number
@@ -11,36 +29,36 @@ interface RealTimeData {
   userId?: string
 }
 
-interface UserData {
-  user: any
-  latestData: {
-    heartRate?: any
-    eeg?: any
-    ecg?: any
-  }
-}
-
 export function useRealTimeData() {
-  const [realTimeData, setRealTimeData] = useState<RealTimeData>({
+  const [realTimeData, setRealTimeData] = useState<DisplayData>({
     heartRate: 0,
     eegAlpha: 0,
     ecgSignal: 0,
     anxietyLevel: "Low",
     lastUpdate: new Date(),
   })
-  const [allUsersData, setAllUsersData] = useState<UserData[]>([])
+  const [rawData, setRawData] = useState<Record<string, Record<string, RealTimeData>>>({})
   const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected">("disconnected")
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Initialize MQTT client on the server
+    // Start MQTT processing
     initializeMQTT()
 
-    // Poll for latest data every 2 seconds
+    // Fetch data more frequently for real-time updates (500ms)
     const interval = setInterval(() => {
       fetchLatestData()
-    }, 2000)
+    }, 500)
 
-    return () => clearInterval(interval)
+    // Cleanup old data periodically (every 5 minutes)
+    const cleanupInterval = setInterval(() => {
+      fetch("/api/realtime?cleanup=true").catch(console.error)
+    }, 5 * 60 * 1000)
+
+    return () => {
+      clearInterval(interval)
+      clearInterval(cleanupInterval)
+    }
   }, [])
 
   const initializeMQTT = async () => {
@@ -64,45 +82,97 @@ export function useRealTimeData() {
 
   const fetchLatestData = async () => {
     try {
-      const response = await fetch("/api/mqtt/latest")
-      const data: UserData[] = await response.json()
-
-      setAllUsersData(data)
-
-      // Calculate aggregate real-time data from all users
-      if (data.length > 0) {
-        const latestUserData = data[0] // Use first user's data for main display
-        const heartRate = latestUserData.latestData.heartRate?.value || 0
-        const eegAlpha = latestUserData.latestData.eeg?.value || 0
-        const ecgSignal = latestUserData.latestData.ecg?.signal_quality || 0
-
-        // Calculate anxiety level based on heart rate and EEG
-        let anxietyLevel: "Low" | "Medium" | "High" = "Low"
-        if (heartRate > 100 || eegAlpha < 7) {
-          anxietyLevel = "High"
-        } else if (heartRate > 85 || eegAlpha < 8) {
-          anxietyLevel = "Medium"
+      const response = await fetch("/api/realtime", {
+        cache: 'no-store', // Ensure we get fresh data
+        headers: {
+          'Cache-Control': 'no-cache'
         }
-
-        setRealTimeData({
-          heartRate,
-          eegAlpha,
-          ecgSignal,
-          anxietyLevel,
-          lastUpdate: new Date(),
-          userId: latestUserData.user.firebase_uid,
-        })
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: Failed to fetch real-time data`)
       }
+      
+      const result: RealTimeResponse = await response.json()
+      
+      if (result.success && result.data) {
+        setRawData(result.data)
+        setConnectionStatus("connected")
+        
+        // Process the first user's data for display (or specific user if needed)
+        const userIds = Object.keys(result.data)
+        if (userIds.length > 0) {
+          const firstUserId = userIds[0]
+          const userData = result.data[firstUserId]
+          
+          const heartRateData = userData.heartRate
+          const eegData = userData.eeg
+          const ecgData = userData.ecg
+          
+          const heartRate = heartRateData?.bpm || 0
+          const eegAlpha = eegData?.eegAlpha || 0
+          const ecgSignal = ecgData?.ecgSignal || 0
+          
+          // Calculate anxiety level based on physiological data
+          let anxietyLevel: "Low" | "Medium" | "High" = "Low"
+          if (heartRate > 100 || eegAlpha < 7) {
+            anxietyLevel = "High"
+          } else if (heartRate > 85 || eegAlpha < 8) {
+            anxietyLevel = "Medium"
+          }
+
+          // Only update if data has actually changed
+          setRealTimeData(prev => {
+            if (prev.heartRate !== heartRate || 
+                prev.eegAlpha !== eegAlpha || 
+                prev.ecgSignal !== ecgSignal ||
+                prev.anxietyLevel !== anxietyLevel) {
+              return {
+                heartRate,
+                eegAlpha,
+                ecgSignal,
+                anxietyLevel,
+                lastUpdate: new Date(),
+                userId: firstUserId,
+              }
+            }
+            return prev
+          })
+        }
+      }
+      
+      setIsLoading(false)
     } catch (error) {
-      console.error("Error fetching latest data:", error)
+      console.error("Error fetching real-time data:", error)
       setConnectionStatus("disconnected")
+      setIsLoading(false)
     }
+  }
+
+  // Helper functions
+  const getHeartRate = (userId?: string) => {
+    if (!userId) {
+      return realTimeData.heartRate
+    }
+    return rawData[userId]?.heartRate?.bpm || 0
+  }
+
+  const getAllUsers = () => {
+    return Object.keys(rawData)
+  }
+
+  const getUserData = (userId: string) => {
+    return rawData[userId] || {}
   }
 
   return {
     realTimeData,
-    allUsersData,
+    rawData,
     connectionStatus,
+    isLoading,
     refreshData: fetchLatestData,
+    getHeartRate,
+    getAllUsers,
+    getUserData,
   }
 }

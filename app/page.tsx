@@ -212,7 +212,7 @@ export default function MedicalDashboard() {
         {/* Dashboard Content */}
         <div className="flex-1 overflow-auto bg-gradient-to-br from-blue-50 to-indigo-100">
           {activeSection === "monitoring" && <PatientMonitoringPage realTimeData={realTimeData} />}
-          {activeSection === "vitals" && <VitalSignsPage realTimeData={realTimeData} />}
+          {activeSection === "vitals" && <VitalSignsPage />}
           {activeSection === "analytics" && <PredictiveAnalyticsPage realTimeData={realTimeData} />}
           {activeSection === "alerts" && <AlertsPage realTimeData={realTimeData} />}
           {activeSection === "system" && <SystemStatusPage realTimeData={realTimeData} />}

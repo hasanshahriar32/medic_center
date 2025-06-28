@@ -19,7 +19,10 @@ export async function GET(request: NextRequest) {
           return {
             user,
             latestData: latestData.reduce((acc, data) => {
-              acc[data.dataType] = data
+              // Only keep the first (most recent) occurrence of each data type
+              if (!acc[data.dataType]) {
+                acc[data.dataType] = data
+              }
               return acc
             }, {} as any),
           }

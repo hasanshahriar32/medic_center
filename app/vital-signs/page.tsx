@@ -3,27 +3,22 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Heart, Brain, Activity, Thermometer, Droplets, Wind } from "lucide-react"
+import { useRealTimeData } from "@/hooks/useRealTimeData"
 
-const defaultRealTimeData = {
-  heartRate: 0,
-  eegAlpha: 0,
-  ecgSignal: 0,
-  anxietyLevel: "Low",
-  lastUpdate: new Date(),
-}
+export default function VitalSignsPage() {
+  const { realTimeData, connectionStatus } = useRealTimeData()
 
-export default function VitalSignsPage({
-  realTimeData = defaultRealTimeData,
-}: {
-  realTimeData?: {
-    heartRate: number
-    eegAlpha: number
-    ecgSignal: number
-    anxietyLevel: string
-    lastUpdate: Date
-  }
-}) {
-  const vitalSigns = [
+  type VitalColor = "red" | "purple" | "blue" | "green" | "cyan" | "orange"
+
+  const vitalSigns: {
+    name: string
+    value: number | string
+    unit: string
+    normal: string
+    icon: React.ElementType
+    color: VitalColor
+    trend: string
+  }[] = [
     {
       name: "Heart Rate",
       value: realTimeData.heartRate,
@@ -80,7 +75,9 @@ export default function VitalSignsPage({
     },
   ]
 
-  const getColorClasses = (color) => {
+  const getColorClasses = (
+    color: "red" | "purple" | "blue" | "green" | "cyan" | "orange"
+  ) => {
     const colors = {
       red: "from-red-50 to-pink-50 border-red-200 text-red-600",
       purple: "from-purple-50 to-indigo-50 border-purple-200 text-purple-600",
@@ -99,6 +96,15 @@ export default function VitalSignsPage({
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Vital Signs Monitoring</h1>
           <p className="text-sm text-gray-600">Real-time physiological parameter tracking</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <span className={`text-xs ${connectionStatus === 'connected' ? 'text-green-600' : 'text-red-600'}`}>
+            {connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}
+          </span>
+          <span className="text-xs text-gray-500">
+            Last update: {realTimeData.lastUpdate.toLocaleTimeString()}
+          </span>
         </div>
       </div>
 
@@ -168,10 +174,10 @@ export default function VitalSignsPage({
                   <Progress
                     value={
                       vital.name === "Heart Rate"
-                        ? ((Number.parseFloat(vital.value) - 60) / 40) * 100
+                        ? ((Number.parseFloat(vital.value.toString()) - 60) / 40) * 100
                         : vital.name === "EEG Alpha Waves"
-                          ? ((Number.parseFloat(vital.value) - 6) / 6) * 100
-                          : Number.parseFloat(vital.value)
+                          ? ((Number.parseFloat(vital.value.toString()) - 6) / 6) * 100
+                          : Number.parseFloat(vital.value.toString())
                     }
                     className="h-2"
                   />

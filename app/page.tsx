@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { onAuthStateChangedClient, signOutClient } from "@/lib/firebase-auth"
-import { ChevronRight, Activity, Heart, Brain, AlertTriangle, Bell, RefreshCw, Zap, LogOut } from "lucide-react"
+import { ChevronRight, Activity, Heart, Brain, AlertTriangle, Bell, RefreshCw, Zap, LogOut, Wifi } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRealTimeData } from "@/hooks/useRealTimeData"
 import PatientMonitoringPage from "./patient-monitoring/page"
@@ -10,6 +10,7 @@ import VitalSignsPage from "./vital-signs/page"
 import PredictiveAnalyticsPage from "./predictive-analytics/page"
 import AlertsPage from "./alerts/page"
 import SystemStatusPage from "./system-status/page"
+import { MQTTInstructions } from "@/components/mqtt-instructions"
 
 export default function MedicalDashboard() {
   const [activeSection, setActiveSection] = useState("monitoring")
@@ -67,7 +68,16 @@ export default function MedicalDashboard() {
               <h1 className="text-blue-600 font-bold text-lg tracking-wide">MedWatch AI</h1>
               <p className="text-gray-500 text-xs">Real-Time Medical Monitoring</p>
               <p className="text-gray-400 text-xs">v3.2.1 HIPAA Compliant</p>
-              {user && <p className="text-gray-600 text-xs mt-2">Welcome, {user.email}</p>}
+              {user && (
+                <div className="text-gray-600 text-xs mt-2 space-y-1">
+                  <p>Welcome, {user.email}</p>
+                  <div className="bg-gray-100 p-2 rounded border">
+                    <p className="font-medium text-gray-700">MQTT User ID:</p>
+                    <p className="font-mono text-xs text-blue-600 break-all">{user.uid}</p>
+                    <p className="text-gray-500 text-xs mt-1">Use this ID in your IoT device</p>
+                  </div>
+                </div>
+              )}
             </div>
             <Button
               variant="ghost"
@@ -88,6 +98,7 @@ export default function MedicalDashboard() {
               { id: "analytics", icon: Brain, label: "PREDICTIVE ANALYTICS", color: "text-purple-600" },
               { id: "alerts", icon: AlertTriangle, label: "ALERTS & WARNINGS", color: "text-orange-500" },
               { id: "system", icon: Zap, label: "SYSTEM STATUS", color: "text-green-600" },
+              { id: "mqtt", icon: Wifi, label: "MQTT SETUP", color: "text-cyan-600" },
             ].map((item) => (
               <button
                 key={item.id}
@@ -173,7 +184,9 @@ export default function MedicalDashboard() {
                       ? "Predictive Analytics"
                       : activeSection === "alerts"
                         ? "Alerts & Warnings"
-                        : "System Status"}
+                        : activeSection === "system"
+                          ? "System Status"
+                          : "MQTT Setup"}
               </span>
             </div>
           </div>
@@ -203,6 +216,15 @@ export default function MedicalDashboard() {
           {activeSection === "analytics" && <PredictiveAnalyticsPage realTimeData={realTimeData} />}
           {activeSection === "alerts" && <AlertsPage realTimeData={realTimeData} />}
           {activeSection === "system" && <SystemStatusPage realTimeData={realTimeData} />}
+          {activeSection === "mqtt" && (
+            <div className="p-6">
+              <div className="mb-6">
+                <h1 className="text-2xl font-bold text-gray-800">MQTT Setup Instructions</h1>
+                <p className="text-sm text-gray-600">Configure your IoT devices to send sensor data</p>
+              </div>
+              {user && <MQTTInstructions userId={user.uid} />}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -25,36 +25,63 @@ export default function PatientMonitoringPage({
     lastUpdate: Date
   }
 }) {
-  const [patients, setPatients] = useState([])
+  const [patientsWithData, setPatientsWithData] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchPatients()
+    fetchPatientsWithLatestData()
+
+    // Refresh data every 5 seconds
+    const interval = setInterval(fetchPatientsWithLatestData, 5000)
+    return () => clearInterval(interval)
   }, [])
 
-  const fetchPatients = async () => {
+  const fetchPatientsWithLatestData = async () => {
     try {
-      const response = await fetch("/api/users")
-      const users = await response.json()
+      const response = await fetch("/api/mqtt/latest")
+      const usersData = await response.json()
 
-      // Transform users to patient format with real-time data
-      const patientsData = users.map((user: any) => ({
-        id: user.id,
-        firebase_uid: user.firebase_uid,
-        name: user.name,
-        age: user.age || "N/A",
-        condition: user.medical_condition || "General Monitoring",
-        status: "monitoring",
-        heartRate: realTimeData.heartRate || 0,
-        eegActivity: realTimeData.eegAlpha || 0,
-        riskLevel: realTimeData.anxietyLevel || "Low",
-        lastUpdate: realTimeData.lastUpdate ? new Date(realTimeData.lastUpdate).toLocaleString() : "No data",
-        email: user.email,
-      }))
+      // Transform users data to patient format with real-time sensor data
+      const patientsData = usersData.map((userData: any) => {
+        const heartRateData = userData.latestData.heartRate
+        const eegData = userData.latestData.eeg
+        const ecgData = userData.latestData.ecg
 
-      setPatients(patientsData)
+        const heartRate = heartRateData?.value || 0
+        const eegActivity = eegData?.value || 0
+        const ecgSignal = ecgData?.signal_quality || 0
+
+        // Calculate risk level based on latest sensor data
+        let riskLevel = "Low"
+        if (heartRate > 100 || eegActivity < 7) {
+          riskLevel = "High"
+        } else if (heartRate > 85 || eegActivity < 8) {
+          riskLevel = "Medium"
+        }
+
+        return {
+          id: userData.user.id,
+          firebase_uid: userData.user.firebase_uid,
+          name: userData.user.name,
+          age: userData.user.age || "N/A",
+          condition: userData.user.medical_condition || "General Monitoring",
+          status: heartRateData || eegData || ecgData ? "monitoring" : "no-data",
+          heartRate,
+          eegActivity,
+          ecgSignal,
+          riskLevel,
+          lastUpdate:
+            heartRateData?.timestamp || eegData?.timestamp || ecgData?.timestamp
+              ? new Date(heartRateData?.timestamp || eegData?.timestamp || ecgData?.timestamp).toLocaleString()
+              : "No data",
+          email: userData.user.email,
+          hasRecentData: !!(heartRateData || eegData || ecgData),
+        }
+      })
+
+      setPatientsWithData(patientsData)
     } catch (error) {
-      console.error("Error fetching patients:", error)
+      console.error("Error fetching patients with data:", error)
     } finally {
       setLoading(false)
     }
@@ -77,14 +104,14 @@ export default function PatientMonitoringPage({
     switch (status) {
       case "monitoring":
         return "bg-blue-100 text-blue-800 border-blue-200"
-      case "stable":
-        return "bg-green-100 text-green-800 border-green-200"
-      case "alert":
-        return "bg-red-100 text-red-800 border-red-200"
+      case "no-data":
+        return "bg-gray-100 text-gray-800 border-gray-200"
       default:
         return "bg-gray-100 text-gray-800 border-gray-200"
     }
   }
+
+  const patientsWithRecentData = patientsWithData.filter((p) => p.hasRecentData)
 
   return (
     <div className="p-6 space-y-6">
@@ -92,7 +119,7 @@ export default function PatientMonitoringPage({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Patient Monitoring Dashboard</h1>
-          <p className="text-sm text-gray-600">Real-time monitoring of anxiety and panic attack indicators</p>
+          <p className="text-sm text-gray-600">Real-time MQTT sensor data monitoring</p>
         </div>
       </div>
 
@@ -191,24 +218,24 @@ export default function PatientMonitoringPage({
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
             <User className="w-5 h-5" />
-            Registered Patients ({patients.length})
+            Patients with MQTT Data ({patientsWithRecentData.length} active)
           </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="text-gray-500 mt-2">Loading patients...</p>
+              <p className="text-gray-500 mt-2">Loading patient data...</p>
             </div>
-          ) : patients.length === 0 ? (
+          ) : patientsWithRecentData.length === 0 ? (
             <div className="text-center py-8">
-              <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No patients registered yet</p>
-              <p className="text-sm text-gray-400">Patients will appear here after they create accounts</p>
+              <Activity className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No patients with recent MQTT data</p>
+              <p className="text-sm text-gray-400">Patients will appear here when they start sending sensor data</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {patients.map((patient) => (
+              {patientsWithRecentData.map((patient) => (
                 <div
                   key={patient.id}
                   className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
@@ -234,11 +261,17 @@ export default function PatientMonitoringPage({
                       </div>
                       <div className="text-center">
                         <p className="text-xs text-gray-500">EEG Alpha</p>
-                        <p className="text-lg font-bold text-purple-600 font-mono">{patient.eegActivity}</p>
+                        <p className="text-lg font-bold text-purple-600 font-mono">{patient.eegActivity.toFixed(1)}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-gray-500">ECG Quality</p>
+                        <p className="text-lg font-bold text-blue-600 font-mono">{patient.ecgSignal}%</p>
                       </div>
                       <div className="flex flex-col gap-2">
                         <Badge className={getRiskColor(patient.riskLevel)}>{patient.riskLevel} Risk</Badge>
-                        <Badge className={getStatusColor(patient.status)}>{patient.status}</Badge>
+                        <Badge className={getStatusColor(patient.status)}>
+                          {patient.status === "monitoring" ? "Live Data" : "No Data"}
+                        </Badge>
                       </div>
                       <div className="text-right">
                         <div className="flex items-center gap-1 text-xs text-gray-500">
@@ -261,15 +294,15 @@ export default function PatientMonitoringPage({
           <CardHeader>
             <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
               <Heart className="w-5 h-5 text-red-500" />
-              ECG Waveform
+              MQTT Heart Rate Stream
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-32 bg-gray-50 rounded-lg flex items-center justify-center border">
               <div className="text-center text-gray-500">
                 <Activity className="w-8 h-8 mx-auto mb-2 animate-pulse" />
-                <p className="text-sm">Real-time ECG visualization</p>
-                <p className="text-xs">Signal Quality: {realTimeData.ecgSignal}%</p>
+                <p className="text-sm">Real-time MQTT heart rate data</p>
+                <p className="text-xs">Current: {realTimeData.heartRate} BPM</p>
               </div>
             </div>
           </CardContent>
@@ -279,14 +312,14 @@ export default function PatientMonitoringPage({
           <CardHeader>
             <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
               <Brain className="w-5 h-5 text-purple-500" />
-              EEG Activity
+              MQTT EEG Stream
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-32 bg-gray-50 rounded-lg flex items-center justify-center border">
               <div className="text-center text-gray-500">
                 <TrendingUp className="w-8 h-8 mx-auto mb-2 animate-pulse" />
-                <p className="text-sm">Real-time EEG visualization</p>
+                <p className="text-sm">Real-time MQTT EEG data</p>
                 <p className="text-xs">Alpha Waves: {realTimeData.eegAlpha.toFixed(1)} Hz</p>
               </div>
             </div>

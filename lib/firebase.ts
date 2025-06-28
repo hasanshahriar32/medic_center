@@ -1,9 +1,7 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app"
-import { getAuth } from "firebase/auth"
-import { getAnalytics } from "firebase/analytics"
+import { initializeApp, getApps, getApp } from "firebase/app"
+import type { Auth } from "firebase/auth"
 
-// Your web app's Firebase configuration
+// --- Firebase config -------------------------------------------------------
 const firebaseConfig = {
   apiKey: "AIzaSyDJ8fHGVciQhN96ZXU1TWNMqFmciffasgk",
   authDomain: "medic-centre.firebaseapp.com",
@@ -14,15 +12,23 @@ const firebaseConfig = {
   measurementId: "G-1KPSYZ4GRC",
 }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig)
-export const auth = getAuth(app)
+// --- Always (client & server) initialise/get the Firebase App -------------
+const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp()
 
-// Initialize Analytics only on client side
-let analytics
+// --- Lazy-load browser-only SDKs ------------------------------------------
+let auth: Auth | null = null
+let analytics: any = null
+
 if (typeof window !== "undefined") {
-  analytics = getAnalytics(app)
+  // “require” is safe here because this code only runs in the browser bundle
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { getAuth } = require("firebase/auth")
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { getAnalytics } = require("firebase/analytics")
+
+  auth = getAuth(firebaseApp)
+  analytics = getAnalytics(firebaseApp)
 }
 
-export { analytics }
-export default app
+// Export a non-null auth only on the client; server code should guard for null
+export { firebaseApp as app, auth, analytics }

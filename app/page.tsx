@@ -5,7 +5,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { ChevronRight, Activity, Heart, Brain, AlertTriangle, Bell, RefreshCw, Zap, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useSocket } from "@/hooks/useSocket"
+import { useRealTimeData } from "@/hooks/useRealTimeData"
 import PatientMonitoringPage from "./patient-monitoring/page"
 import VitalSignsPage from "./vital-signs/page"
 import PredictiveAnalyticsPage from "./predictive-analytics/page"
@@ -18,7 +18,7 @@ export default function MedicalDashboard() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  const { realTimeData, connectionStatus } = useSocket()
+  const { realTimeData, connectionStatus, refreshData } = useRealTimeData()
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -110,7 +110,7 @@ export default function MedicalDashboard() {
                   <div
                     className={`w-2 h-2 rounded-full animate-pulse ${connectionStatus === "connected" ? "bg-green-500" : "bg-red-500"}`}
                   ></div>
-                  <span className="text-xs text-gray-700 font-medium">SYSTEM STATUS</span>
+                  <span className="text-xs text-gray-700 font-medium">MQTT STATUS</span>
                 </div>
                 <div className="text-xs text-gray-600 space-y-1">
                   <div className="flex justify-between">
@@ -161,7 +161,7 @@ export default function MedicalDashboard() {
         <div className="h-16 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between px-6">
           <div className="flex items-center gap-4">
             <div className="text-sm text-gray-600">
-              <span className="font-medium text-gray-800">Multimodal Prediction System</span>
+              <span className="font-medium text-gray-800">MQTT Medical Monitoring</span>
               <span className="mx-2">•</span>
               <span className="text-blue-600 font-medium">
                 {activeSection === "monitoring"
@@ -183,13 +183,13 @@ export default function MedicalDashboard() {
                 className={`w-2 h-2 rounded-full ${connectionStatus === "connected" ? "bg-green-500" : "bg-red-500"}`}
               ></div>
               <span className="text-xs text-gray-600">
-                {connectionStatus === "connected" ? "Connected" : "Disconnected"}
+                {connectionStatus === "connected" ? "MQTT Connected" : "MQTT Disconnected"}
               </span>
             </div>
             <Button variant="ghost" size="icon" className="text-gray-400 hover:text-blue-600">
               <Bell className="w-4 h-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="text-gray-400 hover:text-blue-600">
+            <Button variant="ghost" size="icon" className="text-gray-400 hover:text-blue-600" onClick={refreshData}>
               <RefreshCw className="w-4 h-4" />
             </Button>
           </div>

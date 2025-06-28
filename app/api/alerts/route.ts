@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getActiveAlerts, createAlert, updateAlertStatus } from "@/lib/database"
+import { getActiveAlerts, createAlert, updateAlertStatus } from "@/lib/database-drizzle"
 
 export async function GET() {
   try {

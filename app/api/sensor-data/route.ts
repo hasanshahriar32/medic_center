@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { insertSensorData, getUserByFirebaseUid } from "@/lib/database"
+import { insertSensorData, getUserByFirebaseUid } from "@/lib/database-drizzle"
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,10 +16,10 @@ export async function POST(request: NextRequest) {
     // Insert heart rate data
     if (bpm !== undefined) {
       const heartRateData = await insertSensorData({
-        user_id: user.id,
-        data_type: "heartRate",
-        value: bpm,
-        signal_quality: signal,
+        userId: user.id,
+        dataType: "heartRate",
+        value: bpm.toString(),
+        signalQuality: signal,
         metadata,
       })
       sensorDataEntries.push(heartRateData)
@@ -28,10 +28,10 @@ export async function POST(request: NextRequest) {
     // Insert EEG data
     if (eegAlpha !== undefined) {
       const eegData = await insertSensorData({
-        user_id: user.id,
-        data_type: "eeg",
-        value: eegAlpha,
-        signal_quality: signal,
+        userId: user.id,
+        dataType: "eeg",
+        value: eegAlpha.toString(),
+        signalQuality: signal,
         metadata,
       })
       sensorDataEntries.push(eegData)
@@ -40,10 +40,10 @@ export async function POST(request: NextRequest) {
     // Insert ECG data
     if (ecgSignal !== undefined) {
       const ecgData = await insertSensorData({
-        user_id: user.id,
-        data_type: "ecg",
-        value: ecgSignal,
-        signal_quality: signal,
+        userId: user.id,
+        dataType: "ecg",
+        value: ecgSignal.toString(),
+        signalQuality: signal,
         metadata,
       })
       sensorDataEntries.push(ecgData)

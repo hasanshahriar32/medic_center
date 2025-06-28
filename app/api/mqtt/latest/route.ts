@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getLatestSensorData, getAllUsers } from "@/lib/database"
+import { getLatestSensorData, getAllUsers } from "@/lib/database-drizzle"
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
           return {
             user,
             latestData: latestData.reduce((acc, data) => {
-              acc[data.data_type] = data
+              acc[data.dataType] = data
               return acc
             }, {} as any),
           }

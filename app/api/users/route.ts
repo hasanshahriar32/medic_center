@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getAllUsers, createUser } from "@/lib/database"
+import { getAllUsers, createUser } from "@/lib/database-drizzle"
 
 export async function GET() {
   try {

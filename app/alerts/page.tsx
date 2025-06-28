@@ -1,5 +1,5 @@
 "use client"
-import { AlertTriangle, Bell, Brain, CheckCircle, Clock, Heart, User, X } from "lucide-react"
+import { AlertTriangle, Bell, Brain, CheckCircle, Clock, Heart, User, X, BellRing, HeartPulse } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,59 +16,57 @@ interface AlertsPageProps {
   realTimeData?: RealTimeData
 }
 
-export default function AlertsPage({
-  realTimeData = {
-    heartRate: 0,
-    eegAlpha: 0,
-    ecgSignal: 0,
-    anxietyLevel: "Low",
-    lastUpdate: new Date(),
-  },
-}: AlertsPageProps) {
+const defaultRealTimeData = {
+  heartRate: 0,
+  eegAlpha: 0,
+  ecgSignal: 0,
+  anxietyLevel: "Low",
+  lastUpdate: new Date(),
+}
+
+export default function AlertsPage({ realTimeData = defaultRealTimeData }: AlertsPageProps) {
   const alerts = [
     {
-      id: "ALT-001",
-      type: "Critical",
-      title: "High Anxiety Level Detected",
-      patient: "Sarah Johnson",
-      time: "2 minutes ago",
-      description: "Patient showing elevated heart rate (95 BPM) and reduced alpha wave activity",
-      status: "active",
-      priority: "high",
-      source: "ML Prediction Model",
+      id: 1,
+      type: "High Anxiety",
+      level: realTimeData.anxietyLevel,
+      icon: AlertTriangle,
+      color:
+        realTimeData.anxietyLevel === "High"
+          ? "text-red-600"
+          : realTimeData.anxietyLevel === "Medium"
+            ? "text-orange-500"
+            : "text-green-600",
+      time: realTimeData.lastUpdate.toLocaleTimeString(),
+      description:
+        realTimeData.anxietyLevel === "High"
+          ? "Immediate intervention required"
+          : realTimeData.anxietyLevel === "Medium"
+            ? "Patient under observation"
+            : "Normal",
     },
     {
-      id: "ALT-002",
-      type: "Warning",
-      title: "EEG Pattern Anomaly",
-      patient: "Michael Chen",
-      time: "5 minutes ago",
-      description: "Unusual beta wave patterns detected, possible stress indicator",
-      status: "acknowledged",
-      priority: "medium",
-      source: "EEG Monitor",
+      id: 2,
+      type: "Heart-Rate Change",
+      level: `${realTimeData.heartRate} BPM`,
+      icon: HeartPulse,
+      color: realTimeData.heartRate > 100 || realTimeData.heartRate < 50 ? "text-red-600" : "text-blue-600",
+      time: realTimeData.lastUpdate.toLocaleTimeString(),
+      description:
+        realTimeData.heartRate > 100
+          ? "Tachycardia detected"
+          : realTimeData.heartRate < 50
+            ? "Bradycardia detected"
+            : "Within normal range",
     },
     {
-      id: "ALT-003",
-      type: "Info",
-      title: "Medication Reminder",
-      patient: "Emma Davis",
-      time: "10 minutes ago",
-      description: "Scheduled anxiety medication due in 30 minutes",
-      status: "resolved",
-      priority: "low",
-      source: "Treatment Schedule",
-    },
-    {
-      id: "ALT-004",
-      type: "Critical",
-      title: "Panic Attack Prediction",
-      patient: "Sarah Johnson",
-      time: "15 minutes ago",
-      description: "85% probability of panic attack in next 30 minutes based on current vitals",
-      status: "active",
-      priority: "high",
-      source: "LSTM Neural Network",
+      id: 3,
+      type: "System Notification",
+      level: "Info",
+      icon: BellRing,
+      color: "text-gray-600",
+      time: new Date().toLocaleTimeString(),
+      description: "No critical events in the last hour",
     },
   ]
 
@@ -184,32 +182,32 @@ export default function AlertsPage({
         <CardContent>
           <div className="space-y-4">
             {alerts.map((alert) => (
-              <div key={alert.id} className={`border rounded-lg p-4 ${getAlertColor(alert.type, alert.priority)}`}>
+              <div key={alert.id} className={`border rounded-lg p-4 ${getAlertColor(alert.type, alert.level)}`}>
                 <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="mt-1">{getAlertIcon(alert.type)}</div>
+                    <div className="mt-1">{alert.icon}</div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-gray-800">{alert.title}</h3>
-                        <Badge className={getStatusColor(alert.status)}>{alert.status}</Badge>
+                        <h3 className="font-semibold text-gray-800">{alert.type}</h3>
+                        <Badge className={getStatusColor(alert.level)}>{alert.level}</Badge>
                       </div>
                       <p className="text-sm text-gray-700 mb-2">{alert.description}</p>
                       <div className="flex items-center gap-4 text-xs text-gray-600">
                         <div className="flex items-center gap-1">
                           <User className="w-3 h-3" />
-                          {alert.patient}
+                          {/* Patient Name */}
                         </div>
                         <div className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           {alert.time}
                         </div>
-                        <div>Source: {alert.source}</div>
+                        <div>Source: {/* Source */}</div>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex gap-2">
-                    {alert.status === "active" && (
+                    {alert.level === "High Anxiety" && (
                       <>
                         <Button size="sm" variant="outline" className="text-xs bg-transparent">
                           Acknowledge
@@ -219,7 +217,7 @@ export default function AlertsPage({
                         </Button>
                       </>
                     )}
-                    {alert.status === "acknowledged" && (
+                    {alert.level === "Medium" && (
                       <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white text-xs">
                         <CheckCircle className="w-3 h-3 mr-1" />
                         Resolve

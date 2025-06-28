@@ -10,11 +10,13 @@ export async function GET(request: NextRequest) {
 
     if (userId) {
       console.log("👤 Getting data for specific user:", userId)
+      // Get latest data for specific user
       const latestData = await getLatestSensorData(userId)
       console.log("📊 Latest data for user:", latestData)
       return NextResponse.json(latestData)
     } else {
       console.log("👥 Getting data for all users...")
+      // Get latest data for all users
       const users = await getAllUsers()
       console.log("👥 Found users:", users.length)
 
@@ -43,7 +45,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: "Failed to fetch latest data",
-        details: error instanceof Error ? error.message : "Unknown error",
+        details: error.message,
       },
       { status: 500 },
     )

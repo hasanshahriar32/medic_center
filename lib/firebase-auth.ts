@@ -1,112 +1,58 @@
 "use client"
 
-import { initializeApp, getApps, type FirebaseApp } from "firebase/app"
+import { firebaseApp } from "./firebase-app"
 import type { Auth, User, UserCredential, NextOrObserver } from "firebase/auth"
 
-let _firebaseApp: FirebaseApp | undefined
-let _auth: Auth | undefined
-
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-}
+/**
+ * Singleton Auth instance.
+ */
+let authInstance: Auth | null = null
 
 /**
- * Initialize Firebase Auth safely - only in browser
+ * Dynamically load `firebase/auth` only in the browser and make sure the
+ * component registry is ready **before** `getAuth` is called.
  */
-export async function initializeFirebaseAuth(): Promise<Auth | null> {
+async function loadAuth(): Promise<{
+  auth: Auth
+  mod: typeof import("firebase/auth")
+}> {
   if (typeof window === "undefined") {
-    console.log("🚫 Firebase Auth: Server-side execution blocked")
-    return null
+    throw new Error("Firebase Auth can only be used in the browser.")
   }
 
-  try {
-    // Initialize Firebase App if needed
-    if (!_firebaseApp) {
-      _firebaseApp = getApps().length ? getApps()[0] : initializeApp(firebaseConfig)
-      console.log("🔥 Firebase App initialized")
-    }
-
-    // Initialize Auth if needed
-    if (!_auth) {
-      const { getAuth, connectAuthEmulator } = await import("firebase/auth")
-      _auth = getAuth(_firebaseApp)
-
-      // Connect to emulator in development if needed
-      if (process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL) {
-        try {
-          connectAuthEmulator(_auth, process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL)
-          console.log("🔧 Firebase Auth Emulator connected")
-        } catch (error) {
-          console.log("⚠️ Auth emulator already connected or not available")
-        }
-      }
-
-      console.log("🔐 Firebase Auth initialized")
-    }
-
-    return _auth
-  } catch (error) {
-    console.error("❌ Firebase Auth initialization error:", error)
-    return null
+  if (authInstance) {
+    const mod = await import("firebase/auth")
+    return { auth: authInstance, mod }
   }
+
+  // Import the full auth module – this registers the "auth" component.
+  const mod = await import("firebase/auth")
+
+  // Now it is safe to call getAuth().
+  authInstance = mod.getAuth(firebaseApp)
+  return { auth: authInstance, mod }
 }
 
-/**
- * Sign in with email and password
- */
+/* ------------------------------------------------------------------ */
+/*  Convenience wrappers                                               */
+/* ------------------------------------------------------------------ */
+
 export async function signInWithEmail(email: string, password: string): Promise<UserCredential> {
-  const auth = await initializeFirebaseAuth()
-  if (!auth) throw new Error("Firebase Auth not available")
-
-  const { signInWithEmailAndPassword } = await import("firebase/auth")
-  return signInWithEmailAndPassword(auth, email, password)
+  const { auth, mod } = await loadAuth()
+  return mod.signInWithEmailAndPassword(auth, email, password)
 }
 
-/**
- * Create user with email and password
- */
 export async function createUserWithEmail(email: string, password: string): Promise<UserCredential> {
-  const auth = await initializeFirebaseAuth()
-  if (!auth) throw new Error("Firebase Auth not available")
-
-  const { createUserWithEmailAndPassword } = await import("firebase/auth")
-  return createUserWithEmailAndPassword(auth, email, password)
+  const { auth, mod } = await loadAuth()
+  return mod.createUserWithEmailAndPassword(auth, email, password)
 }
 
-/**
- * Listen to auth state changes
- */
-export async function onAuthStateChangedClient(callback: NextOrObserver<User>): Promise<() => void> {
-  const auth = await initializeFirebaseAuth()
-  if (!auth) {
-    console.warn("⚠️ Firebase Auth not available for state listener")
-    return () => {}
-  }
-
-  const { onAuthStateChanged } = await import("firebase/auth")
-  return onAuthStateChanged(auth, callback)
+export async function onAuthStateChangedClient(cb: NextOrObserver<User>): Promise<() => void> {
+  const { auth, mod } = await loadAuth()
+  return mod.onAuthStateChanged(auth, cb)
 }
 
-/**
- * Sign out current user
- */
 export async function signOutClient(): Promise<void> {
-  const auth = await initializeFirebaseAuth()
-  if (!auth) throw new Error("Firebase Auth not available")
-
-  const { signOut } = await import("firebase/auth")
-  return signOut(auth)
-}
-
-/**
- * Get current user
- */
-export async function getCurrentUser(): Promise<User | null> {
-  const auth = await initializeFirebaseAuth()
-  return auth?.currentUser || null
+  const { auth, mod } = await loadAuth()
+  return mod.signOut(auth)
 }

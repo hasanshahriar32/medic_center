@@ -1,132 +1,96 @@
 import mqtt from "mqtt"
-import { insertSensorData, getUserByFirebaseUid, createAlert } from "./database"
+import { insertSensorData, getUserByFirebaseUid, createAlert } from "@/lib/database"
 
 let mqttClient: mqtt.MqttClient | null = null
-let isConnecting = false
 
-interface MQTTData {
+export interface MQTTData {
   userId: string
-  dataType: string
+  dataType: "eeg" | "ecg" | "heartRate" | "bloodPressure" | "temperature"
   bpm?: number
   signal?: number
-  value?: number
-  timestamp: string
+  eegAlpha?: number
+  ecgSignal?: number
+  timestamp?: string
+  metadata?: any
   deviceId?: string
-  [key: string]: any
 }
 
-export async function initializeMQTTClient() {
-  if (mqttClient?.connected) {
-    console.log("🔌 MQTT client already connected")
+export function initializeMQTTClient() {
+  if (mqttClient) {
+    console.log("♻️ MQTT client already exists, returning existing client")
     return mqttClient
   }
 
-  if (isConnecting) {
-    console.log("⏳ MQTT client connection in progress...")
-    return null
+  console.log("🔌 Creating new MQTT client...")
+  console.log("🌐 MQTT Server:", process.env.MQTT_SERVER)
+  console.log("🔌 MQTT Port:", process.env.MQTT_PORT)
+  console.log("👤 MQTT Username:", process.env.MQTT_USERNAME ? "Set" : "Not set")
+
+  const mqttUrl = `mqtts://${process.env.MQTT_SERVER}:${process.env.MQTT_PORT}`
+  const mqttOptions = {
+    username: process.env.MQTT_USERNAME,
+    password: process.env.MQTT_PASSWORD,
+    connectTimeout: 60000,
+    reconnectPeriod: 5000,
   }
 
-  try {
-    isConnecting = true
-    console.log("🔌 Creating new MQTT client...")
+  console.log("🔗 Connecting to:", mqttUrl)
 
-    const server = process.env.MQTT_SERVER
-    const port = process.env.MQTT_PORT
-    const username = process.env.MQTT_USERNAME
-    const password = process.env.MQTT_PASSWORD
+  mqttClient = mqtt.connect(mqttUrl, mqttOptions)
 
-    console.log("🌐 MQTT Server:", server)
-    console.log("🔌 MQTT Port:", port)
-    console.log("👤 MQTT Username:", username ? "Set" : "Not set")
+  mqttClient.on("connect", () => {
+    console.log("✅ Connected to HiveMQ Cloud MQTT broker")
 
-    if (!server || !port || !username || !password) {
-      throw new Error("Missing MQTT configuration")
+    // Subscribe to multiple topics for different data types
+    const topics = ["mrhasan/heart", "mrhasan/eeg", "mrhasan/ecg", "mrhasan/vitals"]
+
+    topics.forEach((topic) => {
+      mqttClient?.subscribe(topic, (err) => {
+        if (err) {
+          console.error(`❌ MQTT subscribe error for ${topic}:`, err)
+        } else {
+          console.log("✅ Subscribed to topic:", topic)
+        }
+      })
+    })
+  })
+
+  mqttClient.on("message", async (topic, message) => {
+    try {
+      const data: MQTTData = JSON.parse(message.toString())
+      console.log("📨 Received MQTT data:", { topic, data })
+
+      // Process and store the data directly (no fetch call)
+      await processMQTTDataDirect(data)
+    } catch (e) {
+      console.error("❌ Invalid MQTT message:", message.toString(), e)
     }
+  })
 
-    const brokerUrl = `mqtts://${server}:${port}`
-    console.log("🔗 Connecting to:", brokerUrl)
+  mqttClient.on("error", (err) => {
+    console.error("❌ MQTT error:", err)
+  })
 
-    mqttClient = mqtt.connect(brokerUrl, {
-      username,
-      password,
-      protocol: "mqtts",
-      port: Number.parseInt(port),
-      clean: true,
-      connectTimeout: 30000,
-      reconnectPeriod: 5000,
-      keepalive: 60,
-    })
+  mqttClient.on("disconnect", () => {
+    console.log("🔌 MQTT client disconnected")
+  })
 
-    return new Promise((resolve, reject) => {
-      if (!mqttClient) {
-        reject(new Error("Failed to create MQTT client"))
-        return
-      }
+  mqttClient.on("reconnect", () => {
+    console.log("🔄 MQTT client reconnecting...")
+  })
 
-      mqttClient.on("connect", () => {
-        console.log("✅ Connected to HiveMQ Cloud MQTT broker")
-        isConnecting = false
+  mqttClient.on("offline", () => {
+    console.log("📴 MQTT client offline")
+  })
 
-        // Subscribe to topics
-        const topics = ["mrhasan/heart", "mrhasan/eeg", "mrhasan/ecg", "mrhasan/vitals"]
-        topics.forEach((topic) => {
-          mqttClient?.subscribe(topic, (err) => {
-            if (err) {
-              console.error(`❌ Failed to subscribe to ${topic}:`, err)
-            } else {
-              console.log(`✅ Subscribed to topic: ${topic}`)
-            }
-          })
-        })
-
-        resolve(mqttClient)
-      })
-
-      mqttClient.on("message", async (topic, message) => {
-        try {
-          const data = JSON.parse(message.toString()) as MQTTData
-          console.log("📨 Received MQTT data:", { topic, data })
-
-          await processMQTTData(data)
-        } catch (error) {
-          console.error("❌ Error processing MQTT message:", error)
-        }
-      })
-
-      mqttClient.on("error", (error) => {
-        console.error("❌ MQTT connection error:", error)
-        isConnecting = false
-        reject(error)
-      })
-
-      mqttClient.on("offline", () => {
-        console.log("📴 MQTT client offline")
-      })
-
-      mqttClient.on("reconnect", () => {
-        console.log("🔄 MQTT client reconnecting...")
-      })
-
-      // Timeout after 30 seconds
-      setTimeout(() => {
-        if (isConnecting) {
-          isConnecting = false
-          reject(new Error("MQTT connection timeout"))
-        }
-      }, 30000)
-    })
-  } catch (error) {
-    console.error("❌ Failed to initialize MQTT client:", error)
-    isConnecting = false
-    throw error
-  }
+  return mqttClient
 }
 
-async function processMQTTData(data: MQTTData) {
+async function processMQTTDataDirect(data: MQTTData) {
   try {
-    console.log("🔄 Processing MQTT data:", data)
+    console.log("⚙️ Processing MQTT data directly:", data)
 
-    // Find user by Firebase UID
+    // Get user from database using Firebase UID
     const user = await getUserByFirebaseUid(data.userId)
     if (!user) {
       console.error("❌ User not found for Firebase UID:", data.userId)
@@ -135,94 +99,104 @@ async function processMQTTData(data: MQTTData) {
 
     console.log("👤 Found user:", user.name)
 
-    // Extract sensor value based on data type
-    let value: number
-    let signalQuality: number | undefined
+    const sensorDataEntries = []
 
-    switch (data.dataType) {
-      case "heartRate":
-        value = data.bpm || data.value || 0
-        signalQuality = data.signal
-        break
-      case "eeg":
-      case "ecg":
-        value = data.value || 0
-        signalQuality = data.signal
-        break
-      default:
-        value = data.value || 0
-        signalQuality = data.signal
-    }
-
-    // Insert sensor data
-    const sensorData = await insertSensorData({
-      user_id: user.id,
-      data_type: data.dataType,
-      value,
-      signal_quality: signalQuality,
-      metadata: {
-        deviceId: data.deviceId,
-        timestamp: data.timestamp,
-        rawData: data,
-      },
-    })
-
-    console.log("✅ MQTT data processed successfully:", sensorData.id)
-
-    // Check for alerts based on thresholds
-    await checkAndCreateAlerts(user.id, data.dataType, value)
-  } catch (error) {
-    console.error("❌ Error processing MQTT data:", error)
-  }
-}
-
-async function checkAndCreateAlerts(userId: string, dataType: string, value: number) {
-  try {
-    let alertType: "info" | "warning" | "critical" | null = null
-    let title = ""
-    let description = ""
-
-    switch (dataType) {
-      case "heartRate":
-        if (value > 100) {
-          alertType = value > 120 ? "critical" : "warning"
-          title = "High Heart Rate Detected"
-          description = `Heart rate is ${value} BPM, which is ${value > 120 ? "critically" : "moderately"} elevated.`
-        } else if (value < 60) {
-          alertType = value < 50 ? "critical" : "warning"
-          title = "Low Heart Rate Detected"
-          description = `Heart rate is ${value} BPM, which is ${value < 50 ? "critically" : "moderately"} low.`
-        }
-        break
-
-      case "eeg":
-        if (value > 50) {
-          alertType = "warning"
-          title = "Unusual EEG Activity"
-          description = `EEG reading of ${value} μV detected, which may indicate heightened brain activity.`
-        }
-        break
-
-      case "ecg":
-        if (value > 2.0 || value < -2.0) {
-          alertType = "critical"
-          title = "Abnormal ECG Reading"
-          description = `ECG amplitude of ${value} mV is outside normal range and requires immediate attention.`
-        }
-        break
-    }
-
-    if (alertType) {
-      await createAlert({
-        user_id: userId,
-        type: alertType,
-        title,
-        description,
+    // Process different types of sensor data
+    if (data.bpm !== undefined) {
+      console.log("💓 Processing heart rate data:", data.bpm)
+      const heartRateData = await insertSensorData({
+        user_id: user.id,
+        data_type: "heartRate",
+        value: data.bpm,
+        signal_quality: data.signal,
+        metadata: {
+          timestamp: data.timestamp,
+          deviceId: data.deviceId,
+          ...data.metadata,
+        },
       })
-      console.log(`🚨 ${alertType.toUpperCase()} alert created: ${title}`)
+      sensorDataEntries.push(heartRateData)
+
+      // Check for heart rate alerts
+      if (data.bpm > 100) {
+        console.log("⚠️ Creating heart rate warning alert")
+        await createAlert({
+          user_id: user.id,
+          type: "warning",
+          title: "Elevated Heart Rate Detected",
+          description: `Heart rate of ${data.bpm} BPM detected for ${user.name}`,
+        })
+      } else if (data.bpm > 120) {
+        console.log("🚨 Creating critical heart rate alert")
+        await createAlert({
+          user_id: user.id,
+          type: "critical",
+          title: "Critical Heart Rate Alert",
+          description: `Dangerously high heart rate of ${data.bpm} BPM detected for ${user.name}`,
+        })
+      }
     }
+
+    if (data.eegAlpha !== undefined) {
+      console.log("🧠 Processing EEG data:", data.eegAlpha)
+      const eegData = await insertSensorData({
+        user_id: user.id,
+        data_type: "eeg",
+        value: data.eegAlpha,
+        signal_quality: data.signal,
+        metadata: {
+          timestamp: data.timestamp,
+          deviceId: data.deviceId,
+          ...data.metadata,
+        },
+      })
+      sensorDataEntries.push(eegData)
+
+      // Check for EEG alerts
+      if (data.eegAlpha < 7) {
+        console.log("⚠️ Creating EEG warning alert")
+        await createAlert({
+          user_id: user.id,
+          type: "warning",
+          title: "Low Alpha Wave Activity",
+          description: `EEG Alpha waves at ${data.eegAlpha} Hz detected for ${user.name} - possible stress indicator`,
+        })
+      }
+    }
+
+    if (data.ecgSignal !== undefined) {
+      console.log("📈 Processing ECG data:", data.ecgSignal)
+      const ecgData = await insertSensorData({
+        user_id: user.id,
+        data_type: "ecg",
+        value: data.ecgSignal,
+        signal_quality: data.signal,
+        metadata: {
+          timestamp: data.timestamp,
+          deviceId: data.deviceId,
+          ...data.metadata,
+        },
+      })
+      sensorDataEntries.push(ecgData)
+
+      // Check for ECG signal quality alerts
+      if (data.ecgSignal < 70) {
+        console.log("⚠️ Creating ECG signal quality alert")
+        await createAlert({
+          user_id: user.id,
+          type: "warning",
+          title: "Poor ECG Signal Quality",
+          description: `ECG signal quality at ${data.ecgSignal}% for ${user.name} - check sensor connection`,
+        })
+      }
+    }
+
+    console.log("✅ MQTT data processed successfully:", {
+      user: user.name,
+      entriesCreated: sensorDataEntries.length,
+    })
   } catch (error) {
-    console.error("❌ Error checking alerts:", error)
+    console.error("❌ Error processing MQTT data directly:", error)
   }
 }
 
@@ -232,8 +206,8 @@ export function getMQTTClient() {
 
 export function disconnectMQTT() {
   if (mqttClient) {
+    console.log("🛑 Disconnecting MQTT client...")
     mqttClient.end()
     mqttClient = null
-    console.log("🔌 MQTT client disconnected")
   }
 }

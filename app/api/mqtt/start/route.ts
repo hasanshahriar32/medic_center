@@ -5,29 +5,32 @@ export async function POST() {
   try {
     console.log("🚀 Starting MQTT client...")
 
-    const client = await initializeMQTTClient()
+    const client = initializeMQTTClient()
 
     if (client) {
       console.log("✅ MQTT client started successfully")
       return NextResponse.json({
         success: true,
-        message: "MQTT client started successfully",
-        connected: client.connected,
+        message: "MQTT client initialized",
+        status: "connected",
       })
     } else {
-      console.log("⚠️ MQTT client initialization in progress")
-      return NextResponse.json({
-        success: true,
-        message: "MQTT client initialization in progress",
-      })
+      console.error("❌ Failed to initialize MQTT client")
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Failed to initialize MQTT client",
+        },
+        { status: 500 },
+      )
     }
   } catch (error) {
-    console.error("❌ Failed to start MQTT client:", error)
+    console.error("❌ Error starting MQTT client:", error)
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to start MQTT client",
-        details: error instanceof Error ? error.message : "Unknown error",
+        message: "Error starting MQTT client",
+        error: error.message,
       },
       { status: 500 },
     )

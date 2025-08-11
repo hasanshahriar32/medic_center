@@ -3,13 +3,25 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Brain, AlertTriangle, Target, Zap, BarChart3 } from "lucide-react"
+import { Activity, AlertTriangle, Target, Zap, BarChart3, Heart, Signal } from "lucide-react"
 
 type RealTimeData = {
+  heartRate: number
+  ecgSignal: number
+  hp: number
+  baselineHR: number
+  rmssd: number
   anxietyLevel?: "High" | "Medium" | "Low"
 }
 
-const DEFAULT_REALTIME_DATA: RealTimeData = { anxietyLevel: "Low" }
+const DEFAULT_REALTIME_DATA: RealTimeData = { 
+  heartRate: 70,
+  ecgSignal: 0,
+  hp: 0,
+  baselineHR: 70,
+  rmssd: 0,
+  anxietyLevel: "Low" 
+}
 
 export default function PredictiveAnalyticsPage({
   realTimeData,
@@ -20,25 +32,32 @@ export default function PredictiveAnalyticsPage({
 
   const predictions = [
     {
-      type: "Panic Attack",
-      probability: data.anxietyLevel === "High" ? 85 : data.anxietyLevel === "Medium" ? 45 : 15,
+      type: "Cardiac Arrhythmia",
+      probability: data.heartRate > 120 || data.heartRate < 50 ? 85 : data.hp < 5 ? 65 : 15,
       timeframe: "Next 30 minutes",
-      confidence: 92,
-      factors: ["Elevated HR", "EEG Patterns", "HRV Changes"],
-    },
-    {
-      type: "Anxiety Episode",
-      probability: data.anxietyLevel === "High" ? 75 : data.anxietyLevel === "Medium" ? 55 : 25,
-      timeframe: "Next 2 hours",
       confidence: 88,
-      factors: ["Alpha Wave Reduction", "Stress Markers", "Historical Pattern"],
+      factors: ["ECG Signal Quality", "Heart Rate Variability", "HP Signal Strength"],
     },
     {
-      type: "Sleep Disturbance",
-      probability: Math.floor(Math.random() * 40) + 30,
-      timeframe: "Tonight",
+      type: "Stress Response",
+      probability: data.anxietyLevel === "High" ? 75 : data.anxietyLevel === "Medium" ? 55 : 25,
+      timeframe: "Next 2 hours", 
+      confidence: 88,
+      factors: ["Heart Rate Elevation", "ECG Pattern Changes", "RMSSD Variation"],
+    },
+    {
+      type: "ECG Signal Degradation",
+      probability: data.hp < 10 ? 70 : data.ecgSignal < 3 ? 50 : 20,
+      timeframe: "Next hour",
+      confidence: 82,
+      factors: ["HP Signal Strength", "Electrode Contact", "Signal Noise"],
+    },
+    {
+      type: "Heart Rate Variability Issue",
+      probability: data.rmssd < 20 ? 60 : data.rmssd > 80 ? 45 : 25,
+      timeframe: "Ongoing",
       confidence: 76,
-      factors: ["Circadian Rhythm", "Stress Level", "EEG Activity"],
+      factors: ["RMSSD Patterns", "HR Baseline Deviation", "ECG Morphology"],
     },
   ]
 
@@ -66,13 +85,13 @@ export default function PredictiveAnalyticsPage({
     },
   ]
 
-  const getProbabilityColor = (prob) => {
+  const getProbabilityColor = (prob: number) => {
     if (prob >= 70) return "text-red-600 bg-red-50 border-red-200"
     if (prob >= 40) return "text-orange-600 bg-orange-50 border-orange-200"
     return "text-green-600 bg-green-50 border-green-200"
   }
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
         return "bg-green-100 text-green-800"
@@ -90,8 +109,8 @@ export default function PredictiveAnalyticsPage({
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Predictive Analytics</h1>
-          <p className="text-sm text-gray-600">AI-powered anxiety and panic attack prediction</p>
+          <h1 className="text-2xl font-bold text-gray-800">ECG Predictive Analytics</h1>
+          <p className="text-sm text-gray-600">AI-powered cardiac event prediction using ECG analysis</p>
         </div>
       </div>
 
@@ -190,8 +209,8 @@ export default function PredictiveAnalyticsPage({
       <Card className="bg-white border-gray-200 shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-            <Brain className="w-5 h-5 text-purple-500" />
-            Machine Learning Models
+                        <Activity className="w-5 h-5 text-purple-500" />
+            ECG Pattern Analysis
           </CardTitle>
         </CardHeader>
         <CardContent>

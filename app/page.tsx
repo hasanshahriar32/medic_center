@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { onAuthStateChangedClient, signOutClient } from "@/lib/firebase-auth"
-import { ChevronRight, Activity, Heart, Brain, AlertTriangle, Bell, RefreshCw, Zap, LogOut, Wifi } from "lucide-react"
+import { ChevronRight, Activity, Heart, Signal, AlertTriangle, Bell, RefreshCw, Zap, LogOut, Wifi } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRealTimeData } from "@/hooks/useRealTimeData"
+import { ECGDashboard } from "@/components/ecg-dashboard"
 import PatientMonitoringPage from "./patient-monitoring/page"
 import VitalSignsPage from "./vital-signs/page"
 import PredictiveAnalyticsPage from "./predictive-analytics/page"
@@ -13,7 +14,7 @@ import SystemStatusPage from "./system-status/page"
 import { MQTTInstructions } from "@/components/mqtt-instructions"
 
 export default function MedicalDashboard() {
-  const [activeSection, setActiveSection] = useState("monitoring")
+  const [activeSection, setActiveSection] = useState("ecg")
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -65,8 +66,8 @@ export default function MedicalDashboard() {
         <div className="p-4">
           <div className="flex items-center justify-between mb-8">
             <div className={`${sidebarCollapsed ? "hidden" : "block"}`}>
-              <h1 className="text-blue-600 font-bold text-lg tracking-wide">MedWatch AI</h1>
-              <p className="text-gray-500 text-xs">Real-Time Medical Monitoring</p>
+              <h1 className="text-blue-600 font-bold text-lg tracking-wide">ECG Monitor AI</h1>
+              <p className="text-gray-500 text-xs">Real-Time ECG Analysis</p>
               <p className="text-gray-400 text-xs">v3.2.1 HIPAA Compliant</p>
               {user && (
                 <div className="text-gray-600 text-xs mt-2 space-y-1">
@@ -93,12 +94,13 @@ export default function MedicalDashboard() {
 
           <nav className="space-y-2">
             {[
-              { id: "monitoring", icon: Activity, label: "PATIENT MONITORING", color: "text-blue-600" },
-              { id: "vitals", icon: Heart, label: "VITAL SIGNS", color: "text-red-500" },
-              { id: "analytics", icon: Brain, label: "PREDICTIVE ANALYTICS", color: "text-purple-600" },
+              { id: "ecg", icon: Activity, label: "ECG DASHBOARD", color: "text-blue-600" },
+              { id: "monitoring", icon: Heart, label: "PATIENT MONITORING", color: "text-red-500" },
+              { id: "vitals", icon: Signal, label: "VITAL SIGNS", color: "text-green-500" },
+              { id: "analytics", icon: Zap, label: "ECG ANALYTICS", color: "text-purple-600" },
               { id: "alerts", icon: AlertTriangle, label: "ALERTS & WARNINGS", color: "text-orange-500" },
-              { id: "system", icon: Zap, label: "SYSTEM STATUS", color: "text-green-600" },
-              { id: "mqtt", icon: Wifi, label: "MQTT SETUP", color: "text-cyan-600" },
+              { id: "system", icon: Wifi, label: "SYSTEM STATUS", color: "text-cyan-600" },
+              { id: "mqtt", icon: Wifi, label: "MQTT SETUP", color: "text-gray-600" },
             ].map((item) => (
               <button
                 key={item.id}
@@ -192,20 +194,22 @@ export default function MedicalDashboard() {
         <div className="h-16 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between px-6">
           <div className="flex items-center gap-4">
             <div className="text-sm text-gray-600">
-              <span className="font-medium text-gray-800">MQTT Medical Monitoring</span>
+              <span className="font-medium text-gray-800">ECG Medical Monitoring</span>
               <span className="mx-2">•</span>
               <span className="text-blue-600 font-medium">
-                {activeSection === "monitoring"
-                  ? "Patient Monitoring"
-                  : activeSection === "vitals"
-                    ? "Vital Signs"
-                    : activeSection === "analytics"
-                      ? "Predictive Analytics"
-                      : activeSection === "alerts"
-                        ? "Alerts & Warnings"
-                        : activeSection === "system"
-                          ? "System Status"
-                          : "MQTT Setup"}
+                {activeSection === "ecg"
+                  ? "ECG Dashboard"
+                  : activeSection === "monitoring"
+                    ? "Patient Monitoring"
+                    : activeSection === "vitals"
+                      ? "Vital Signs"
+                      : activeSection === "analytics"
+                        ? "ECG Analytics"
+                        : activeSection === "alerts"
+                          ? "Alerts & Warnings"
+                          : activeSection === "system"
+                            ? "System Status"
+                            : "MQTT Setup"}
               </span>
             </div>
           </div>
@@ -230,6 +234,15 @@ export default function MedicalDashboard() {
 
         {/* Dashboard Content */}
         <div className="flex-1 overflow-auto bg-gradient-to-br from-blue-50 to-indigo-100">
+          {activeSection === "ecg" && (
+            <div className="p-6">
+              <div className="mb-6">
+                <h1 className="text-3xl font-bold text-gray-800">ECG Monitoring Dashboard</h1>
+                <p className="text-gray-600">Real-time ECG analysis and heart rate monitoring</p>
+              </div>
+              <ECGDashboard realTimeData={realTimeData} />
+            </div>
+          )}
           {activeSection === "monitoring" && <PatientMonitoringPage realTimeData={realTimeData} />}
           {activeSection === "vitals" && <VitalSignsPage />}
           {activeSection === "analytics" && <PredictiveAnalyticsPage realTimeData={realTimeData} />}

@@ -3,7 +3,11 @@ interface RealTimeData {
   userId: string;
   dataType: string;
   bpm?: number;
-  eegAlpha?: number;
+  hp?: number;
+  threshold?: number;
+  baselineHR?: number;
+  rmssd?: number;
+  hrTrend?: number;
   ecgSignal?: number;
   signal?: number;
   timestamp: string;
@@ -23,6 +27,8 @@ export function updateRealTimeData(data: RealTimeData) {
   const userId = data.userId;
   const dataType = data.dataType;
   
+  console.log(`Updating real-time store for user ${userId}, type ${dataType}:`, data);
+  
   // Update latest data
   if (!realTimeStore.has(userId)) {
     realTimeStore.set(userId, {});
@@ -30,6 +36,8 @@ export function updateRealTimeData(data: RealTimeData) {
   
   const userStore = realTimeStore.get(userId)!;
   userStore[dataType] = data;
+  
+  console.log(`Real-time store updated. User ${userId} now has:`, Object.keys(userStore));
   
   // Update history
   if (!dataHistory.has(userId)) {

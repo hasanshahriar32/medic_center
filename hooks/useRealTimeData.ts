@@ -6,11 +6,29 @@ interface RealTimeData {
   userId: string
   dataType: string
   bpm?: number
-  eegAlpha?: number
+  hp?: number
+  threshold?: number
+  baselineHR?: number
+  rmssd?: number
+  hrTrend?: number
   ecgSignal?: number
   signal?: number
   timestamp: string
   deviceId?: string
+}
+
+interface DisplayData {
+  heartRate: number
+  ecgSignal: number
+  eegAlpha: number // Set to 0 since we removed EEG functionality
+  hp: number
+  threshold: number
+  baselineHR: number
+  rmssd: number
+  hrTrend: number
+  anxietyLevel: "Low" | "Medium" | "High"
+  lastUpdate: Date
+  userId?: string
 }
 
 interface RealTimeResponse {
@@ -20,20 +38,16 @@ interface RealTimeResponse {
   timestamp: string
 }
 
-interface DisplayData {
-  heartRate: number
-  eegAlpha: number
-  ecgSignal: number
-  anxietyLevel: "Low" | "Medium" | "High"
-  lastUpdate: Date
-  userId?: string
-}
-
 export function useRealTimeData() {
   const [realTimeData, setRealTimeData] = useState<DisplayData>({
     heartRate: 0,
-    eegAlpha: 0,
     ecgSignal: 0,
+    eegAlpha: 0, // Removed EEG functionality
+    hp: 0,
+    threshold: 8,
+    baselineHR: 70,
+    rmssd: 0,
+    hrTrend: 55,
     anxietyLevel: "Low",
     lastUpdate: new Date(),
   })
@@ -96,6 +110,7 @@ export function useRealTimeData() {
       const result: RealTimeResponse = await response.json()
       
       if (result.success && result.data) {
+        console.log("Received real-time data:", result.data)
         setRawData(result.data)
         setConnectionStatus("connected")
         
@@ -106,31 +121,39 @@ export function useRealTimeData() {
           const userData = result.data[firstUserId]
           
           const heartRateData = userData.heartRate
-          const eegData = userData.eeg
           const ecgData = userData.ecg
           
           const heartRate = heartRateData?.bpm || 0
-          const eegAlpha = eegData?.eegAlpha || 0
           const ecgSignal = ecgData?.ecgSignal || 0
+          const hp = ecgData?.hp || 0
+          const threshold = ecgData?.threshold || 8
+          const baselineHR = heartRateData?.baselineHR || 70
+          const rmssd = heartRateData?.rmssd || 0
+          const hrTrend = heartRateData?.hrTrend || 55
           
-          // Calculate anxiety level based on physiological data
+          // Calculate anxiety level based on physiological data (removed EEG dependency)
           let anxietyLevel: "Low" | "Medium" | "High" = "Low"
-          if (heartRate > 100 || eegAlpha < 7) {
+          if (heartRate > 100 || hp < 5) {
             anxietyLevel = "High"
-          } else if (heartRate > 85 || eegAlpha < 8) {
+          } else if (heartRate > 85 || hp < 10) {
             anxietyLevel = "Medium"
           }
 
           // Only update if data has actually changed
           setRealTimeData(prev => {
             if (prev.heartRate !== heartRate || 
-                prev.eegAlpha !== eegAlpha || 
-                prev.ecgSignal !== ecgSignal ||
+                prev.ecgSignal !== ecgSignal || 
+                prev.hp !== hp ||
                 prev.anxietyLevel !== anxietyLevel) {
               return {
                 heartRate,
-                eegAlpha,
                 ecgSignal,
+                eegAlpha: 0, // Removed EEG functionality
+                hp,
+                threshold,
+                baselineHR,
+                rmssd,
+                hrTrend,
                 anxietyLevel,
                 lastUpdate: new Date(),
                 userId: firstUserId,

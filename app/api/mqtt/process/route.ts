@@ -5,13 +5,18 @@ import { updateRealTimeData } from "@/lib/realtime-store"
 
 interface MQTTData {
   userId: string
-  dataType: "eeg" | "ecg" | "heartRate" | "bloodPressure" | "temperature"
+  dataType: "ecg_analysis" | "ecg" | "heartRate" | "bloodPressure" | "temperature"
   bpm?: number
   signal?: number
-  eegAlpha?: number
+  hp?: number
+  threshold?: number
+  baselineHR?: number
+  rmssd?: number
+  hrTrend?: number
   ecgSignal?: number
   timestamp?: string
   deviceId?: string
+  receivedAt?: string
   metadata?: any
 }
 
@@ -22,12 +27,93 @@ export async function POST(request: NextRequest) {
 
     const processedData = []
 
-    // Process different types of sensor data and store in real-time store
-    if (data.bpm !== undefined) {
+    // Handle ECG analysis data specifically
+    if (data.dataType === 'ecg_analysis') {
+      console.log("Processing ECG analysis data with HP:", data.hp, "BPM:", data.bpm)
+      
+      // Process heart rate data from ECG analysis
+      if (data.bpm !== undefined) {
+        const heartRateData = {
+          userId: data.userId,
+          dataType: "heartRate",
+          bpm: data.bpm,
+          baselineHR: data.baselineHR,
+          rmssd: data.rmssd,
+          hrTrend: data.hrTrend,
+          signal: data.signal,
+          timestamp: data.timestamp || new Date().toISOString(),
+          deviceId: data.deviceId,
+        }
+        
+        // Update real-time store
+        updateRealTimeData(heartRateData)
+        processedData.push(heartRateData)
+
+        // Check for critical heart rate alerts
+        if (data.bpm > 120 || data.bpm < 50) {
+          try {
+            const user = await getCachedUser(data.userId)
+            if (user) {
+              await createAlert({
+                userId: user.id,
+                type: "critical",
+                title: "Critical Heart Rate Alert",
+                description: `${data.bpm > 120 ? 'Dangerously high' : 'Dangerously low'} heart rate of ${data.bpm} BPM detected for ${user.name}`,
+              })
+            }
+          } catch (error) {
+            console.error("Error creating heart rate alert:", error)
+          }
+        }
+      }
+
+      // Process ECG data from ECG analysis
+      const ecgData = {
+        userId: data.userId,
+        dataType: "ecg",
+        hp: data.hp || 0,
+        threshold: data.threshold || 8,
+        ecgSignal: data.hp ? (data.hp / 10) : 0, // Normalize HP for display
+        baselineHR: data.baselineHR,
+        rmssd: data.rmssd,
+        hrTrend: data.hrTrend,
+        signal: data.signal,
+        timestamp: data.timestamp || new Date().toISOString(),
+        deviceId: data.deviceId,
+      }
+      
+      // Update real-time store
+      updateRealTimeData(ecgData)
+      processedData.push(ecgData)
+      console.log("Updated ECG data in store:", ecgData)
+
+      // Check for critical ECG signal quality alerts
+      if (data.hp !== undefined && data.hp < 5) {
+        try {
+          const user = await getCachedUser(data.userId)
+          if (user) {
+            await createAlert({
+              userId: user.id,
+              type: "warning", 
+              title: "Critical ECG Signal Quality",
+              description: `Very poor ECG HP signal at ${data.hp} detected for ${user.name}`,
+            })
+          }
+        } catch (error) {
+          console.error("Error creating ECG alert:", error)
+        }
+      }
+    }
+    
+    // Handle regular heart rate data (non ECG analysis)
+    else if (data.bpm !== undefined) {
       const heartRateData = {
         userId: data.userId,
         dataType: "heartRate",
         bpm: data.bpm,
+        baselineHR: data.baselineHR,
+        rmssd: data.rmssd,
+        hrTrend: data.hrTrend,
         signal: data.signal,
         timestamp: data.timestamp || new Date().toISOString(),
         deviceId: data.deviceId,
@@ -55,39 +141,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (data.eegAlpha !== undefined) {
-      const eegData = {
-        userId: data.userId,
-        dataType: "eeg",
-        eegAlpha: data.eegAlpha,
-        signal: data.signal,
-        timestamp: data.timestamp || new Date().toISOString(),
-        deviceId: data.deviceId,
-      }
-      
-      // Update real-time store (no database)
-      updateRealTimeData(eegData)
-      processedData.push(eegData)
-
-      // Check for critical EEG alerts only
-      if (data.eegAlpha < 5) {
-        try {
-          const user = await getCachedUser(data.userId)
-          if (user) {
-            await createAlert({
-              userId: user.id,
-              type: "warning",
-              title: "Critical Alpha Wave Activity",
-              description: `Very low EEG Alpha waves at ${data.eegAlpha} Hz detected for ${user.name}`,
-            })
-          }
-        } catch (error) {
-          console.error("Error creating EEG alert:", error)
-        }
-      }
-    }
-
-    if (data.ecgSignal !== undefined) {
+    // Handle regular ECG signal data (non ECG analysis)
+    else if (data.ecgSignal !== undefined) {
       const ecgData = {
         userId: data.userId,
         dataType: "ecg",

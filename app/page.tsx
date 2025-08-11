@@ -122,7 +122,7 @@ export default function MedicalDashboard() {
                   <div
                     className={`w-2 h-2 rounded-full animate-pulse ${connectionStatus === "connected" ? "bg-green-500" : "bg-red-500"}`}
                   ></div>
-                  <span className="text-xs text-gray-700 font-medium">MQTT STATUS</span>
+                  <span className="text-xs text-gray-700 font-medium">ECG MONITOR STATUS</span>
                 </div>
                 <div className="text-xs text-gray-600 space-y-1">
                   <div className="flex justify-between">
@@ -130,8 +130,24 @@ export default function MedicalDashboard() {
                     <span className="font-mono text-red-600">{realTimeData.heartRate} BPM</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>EEG Alpha:</span>
-                    <span className="font-mono text-purple-600">{realTimeData.eegAlpha.toFixed(1)} Hz</span>
+                    <span>ECG Signal:</span>
+                    <span className="font-mono text-blue-600">{realTimeData.ecgSignal.toFixed(1)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>HP Value:</span>
+                    <span className="font-mono text-green-600">{realTimeData.hp}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Baseline HR:</span>
+                    <span className="font-mono text-gray-600">{realTimeData.baselineHR}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>RMSSD:</span>
+                    <span className="font-mono text-purple-600">{realTimeData.rmssd.toFixed(1)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>HR Trend:</span>
+                    <span className="font-mono text-indigo-600">{realTimeData.hrTrend}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Anxiety Level:</span>
@@ -149,6 +165,9 @@ export default function MedicalDashboard() {
                   </div>
                   <div className="text-xs text-gray-500 mt-2">
                     Last Update: {realTimeData.lastUpdate.toLocaleTimeString()}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    User: {realTimeData.userId?.slice(-8)}
                   </div>
                 </div>
               </div>
@@ -197,7 +216,7 @@ export default function MedicalDashboard() {
                 className={`w-2 h-2 rounded-full ${connectionStatus === "connected" ? "bg-green-500" : "bg-red-500"}`}
               ></div>
               <span className="text-xs text-gray-600">
-                {connectionStatus === "connected" ? "MQTT Connected" : "MQTT Disconnected"}
+                {connectionStatus === "connected" ? "ECG Monitor Connected" : "ECG Monitor Disconnected"}
               </span>
             </div>
             <Button variant="ghost" size="icon" className="text-gray-400 hover:text-blue-600">
